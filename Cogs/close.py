@@ -216,11 +216,13 @@ class Close(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = desc
         )
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
 
         return embed
     
-    @task("Send Ticketlog", True)
+    @task("Send Ticketlog", False)
     async def send_ticket_log(self, interaction: discord.Interaction, embed: discord.Embed, privated: str) -> None:
         """
         Sends a ticket log to the appropriate channel and DMs the relevant members.
@@ -236,14 +238,14 @@ class Close(commands.Cog):
         channel_json_string = "ADMIN_TICKET_LOGS_ID" if privated == "Admin" else "MANAGEMENT_TICKET_LOGS_ID" if privated == "Management" else "TICKET_LOGS_ID"
         ticket_log_channel_id = self.data['CHANNEL_IDS'][channel_json_string]
         ticket_log_channel = interaction.guild.get_channel(ticket_log_channel_id)
-        await ticket_log_channel.send(embed=embed)
+        await ticket_log_channel.send(embed=embed, file=discord.File("Assets/Logo.png"))
 
         tasks = [overwrite.create_dm() for overwrite in interaction.channel.overwrites
                 if isinstance(overwrite, discord.Member) and not overwrite.bot and interaction.channel.permissions_for(overwrite).view_channel]
 
         try:
             dm_channels = await asyncio.gather(*tasks)
-            send_tasks = [channel.send(embed=embed) for channel in dm_channels if channel]
+            send_tasks = [channel.send(embed=embed, file=discord.File("Assets/Logo.png")) for channel in dm_channels if channel]
             await asyncio.gather(*send_tasks)
         except Exception as error:
             log_tasks.warning(f"Failed to send ticket log: {error}")

@@ -46,8 +46,10 @@ class Rename(commands.Cog):
             description = f"{interaction.user.mention} has changed the ticket name from **{old_name}** to **{interaction.channel.name}**.", 
             color = discord.Color.from_str(self.data["EMBED_COLOR"])
         )
-        rename_embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
-        await interaction.response.send_message(embed = rename_embed)
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        rename_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        await interaction.response.send_message(embed = rename_embed, file = discord.File("Assets/Logo.png"))
 
     @is_ticket()
     @app_commands.guild_only()

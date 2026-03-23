@@ -55,7 +55,7 @@ class TicketsSend(commands.Cog):
                                        "**-** A staff member will be with you as soon as possible.")
                     ),
                     "view": TicketsView(),
-                    "image": "https://i.imgur.com/KxPGdvL.png"
+                    "image": "https://i.imgur.com/k93vtvB.png"
                 },
                 {
                     "embed": None,
@@ -198,7 +198,7 @@ class TicketsView(discord.ui.View):
         self.tickets: dict 
         self.ticket_manager: TicketSystem = TicketSystem()
 
-        with open('MinecadiaTickets/Assets/tickets.json', 'r') as file:
+        with open('Assets/tickets.json', 'r') as file:
             tickets = json.load(file)
             del tickets['TOGGLE_STATUS']
             self.tickets = tickets 
@@ -256,7 +256,7 @@ class TicketsView2(discord.ui.View):
         self.tickets: dict 
         self.ticket_manager: TicketSystem = TicketSystem()
 
-        with open('MinecadiaTickets/Assets/tickets.json', 'r') as file:
+        with open('Assets/tickets.json', 'r') as file:
             tickets = json.load(file)
             del tickets['TOGGLE_STATUS']
             self.tickets = tickets 

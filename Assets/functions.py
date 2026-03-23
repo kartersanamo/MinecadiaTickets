@@ -4,6 +4,11 @@ import discord
 import logger
 import json
 import time
+from typing import Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Variables that represent loggers that can be accessed anywhere in the bot's code simply by importing the logger
 # Then you can run i.e `log_tasks.info("...")` to log information under the logger of "Tasks"
@@ -13,25 +18,35 @@ log_commands = logger.logging.getLogger("Commands")
 # Connection pool global variable
 pool = None
 
+def _db_config_from_env():
+    if not os.getenv("DB_HOST"):
+        return None
+    return {
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "port": int(os.getenv("DB_PORT", "3306")),
+        "user": os.getenv("DB_USER", ""),
+        "password": os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("DB_NAME", "") or os.getenv("DB_DATABASE", ""),
+        "autocommit": os.getenv("DB_AUTOCOMMIT", "true").lower() in ("1", "true", "yes"),
+    }
+
 def get_data() -> dict:
     """
-    Loads the configuration data from a JSON file.
-
-    This function reads the contents of the "MinecadiaTickets/Assets/config.json" file and
-    parses it as a JSON object. The parsed JSON object is then returned.
-
-    Parameters:
-    None
+    Loads the configuration data from a JSON file and overlays sensitive values from .env.
 
     Returns:
-    dict: A dictionary containing the configuration data from the JSON file.
-
-    Raises:
-    FileNotFoundError: If the specified file does not exist.
-    json.JSONDecodeError: If the specified file contains invalid JSON data.
+    dict: A dictionary containing the configuration data (TOKEN, DATABASE_CONFIG, etc. from .env).
     """
-    with open("MinecadiaTickets/Assets/config.json", "r") as file:
-        return json.load(file)
+    with open("Assets/config.json", "r") as file:
+        data = json.load(file)
+    if os.getenv("DISCORD_TOKEN"):
+        data["TOKEN"] = os.getenv("DISCORD_TOKEN")
+    if os.getenv("TICKET_BLACKLIST_WEBHOOK"):
+        data["TICKET_BLACKLIST_WEBHOOK"] = os.getenv("TICKET_BLACKLIST_WEBHOOK")
+    db = _db_config_from_env()
+    if db is not None:
+        data["DATABASE_CONFIG"] = db
+    return data
 data = get_data()
 
 def create_pool():
@@ -140,7 +155,7 @@ def is_ticket():
     return app_commands.check(predicate)
 
 def get_ticket_data():
-    with open('MinecadiaTickets/Assets/tickets.json', 'r') as file:
+    with open('Assets/tickets.json', 'r') as file:
         tickets = json.load(file)
         del tickets['TOGGLE_STATUS']
         return tickets 
@@ -201,3 +216,16 @@ async def new_entry(user: discord.Member):
     - None: This function does not return any value. It only executes an SQL INSERT query to add a new entry in the statistics database.
     """
     execute(f"INSERT INTO statistics (user_ID, tickets_closed, messages_sent, warnings, mutes, temp_bans, bans, screenshares, manual_bans, blacklists, revives, appeals, threads_locked, strike_team_votes, characters_sent, punishment_requests) VALUES ('{user.id}', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')")
+
+def get_embed_logo_url(logo_path: Optional[str]) -> Optional[str]:
+    if not logo_path:
+        return None
+
+    if logo_path.startswith(("http://", "https://")):
+        return logo_path
+
+    if os.path.isfile(logo_path):
+        filename = os.path.basename(logo_path)
+        return f"attachment://{filename}"
+
+    return None

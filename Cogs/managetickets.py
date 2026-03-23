@@ -19,7 +19,7 @@ data = get_data()
 
 async def get_info():
     try:
-        with open("MinecadiaTickets/Assets/tickets.json", "r") as file:
+        with open("Assets/tickets.json", "r") as file:
             info = json.load(file)
             del info['TOGGLE_STATUS']
             return info
@@ -88,7 +88,7 @@ class ManageCategoriesView(discord.ui.View):
     async def toggle_all_tickets(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
             await interaction.response.defer()
-            with open('MinecadiaTickets/Assets/tickets.json', 'r+') as file:
+            with open('Assets/tickets.json', 'r+') as file:
                 data = json.load(file)
                 data['TOGGLE_STATUS'] = 'Disabled' if data['TOGGLE_STATUS'] == 'Enabled' else 'Enabled'
                 file.seek(0)
@@ -160,7 +160,7 @@ class ManageTicketsView(discord.ui.View):
         try:
             await interaction.response.defer()
             output = f"Successfully toggled the following tickets...\n"
-            with open("MinecadiaTickets/Assets/tickets.json", "r+") as file:
+            with open("Assets/tickets.json", "r+") as file:
                 info = json.load(file)
                 for ticket_type in list(info.get(self.category).keys()):
                     status = info.get(self.category).get(ticket_type)['Status']
@@ -305,7 +305,7 @@ class ManageTypeView(discord.ui.View):
                 return False
             new_value = await interaction.client.wait_for('message', check = check)
             new_value.content = "" if new_value.content == "None" else new_value.content
-            with open("MinecadiaTickets/Assets/tickets.json", "r+") as file:
+            with open("Assets/tickets.json", "r+") as file:
                 info = json.load(file)
                 if value in ['Message', 'Description', 'Emoji']:
                     info[self.ticket_category][self.ticket][value] = new_value.content
@@ -342,7 +342,7 @@ class ManageTypeView(discord.ui.View):
     async def toggle_status(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
             await interaction.response.defer()
-            with open("MinecadiaTickets/Assets/tickets.json", "r+") as file:
+            with open("Assets/tickets.json", "r+") as file:
                 info = json.load(file)
                 new_status = 'Enabled' if info[self.ticket_category][self.ticket]['Status'] == 'Disabled' else 'Disabled'
                 info[self.ticket_category][self.ticket]['Status'] = new_status
@@ -469,7 +469,7 @@ class ManageQuestionView(discord.ui.View):
                     return True
                 return False
             new_value = await interaction.client.wait_for('message', check = check)
-            with open("MinecadiaTickets/Assets/tickets.json", "r+") as file:
+            with open("Assets/tickets.json", "r+") as file:
                 info = json.load(file)
                 questions = info.get(self.ticket_category).get(self.ticket).get('Questions')
                 for index, question in enumerate(questions):
@@ -518,7 +518,7 @@ class ManageQuestionView(discord.ui.View):
             if not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()
-            with open("MinecadiaTickets/Assets/tickets.json", "r+") as file:
+            with open("Assets/tickets.json", "r+") as file:
                 info = json.load(file)
                 questions = info.get(self.ticket_category).get(self.ticket).get('Questions')
                 for index, question in enumerate(questions):

@@ -81,8 +81,10 @@ class Add(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = f"{interaction.user.mention} has added {user.mention} to the ticket {interaction.channel.mention}"
         )
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
-        await interaction.response.send_message(embed = embed)
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        await interaction.response.send_message(embed = embed, file = discord.File("Assets/Logo.png"))
 
     @is_ticket()
     @app_commands.guild_only()

@@ -1,11 +1,11 @@
-from Assets.functions import task, log_tasks, get_data, execute, get_ticket_data
+from Assets.functions import task, log_tasks, get_data, execute, get_ticket_data, get_embed_logo_url
 from enum import Enum
 import discord
 import random
 import json
 import time
 
-LOGO = "https://i.imgur.com/fjIYhig.png"
+LOGO = "Assets/Logo.png"
 
 class TicketCategory(Enum):
     GENERAL = "General"
@@ -50,7 +50,8 @@ class Paginator(discord.ui.View):
           for item in self.get_current_page_data():
             embed.description += f"{item}\n"
       if footer_text:
-        embed.set_footer(icon_url = LOGO, text = footer_text)
+        logo_url = get_embed_logo_url(LOGO)
+        embed.set_footer(icon_url = logo_url, text = footer_text)
       return embed
 
     async def update_message(self, interaction: discord.Interaction):
@@ -156,7 +157,8 @@ class Questions(discord.ui.Modal):
                     description = f"Closed by <@{rows[0]['closed_by']}> on <t:{rows[0]['closed_at']}:f> (<t:{rows[0]['closed_at']}:R>)\nReason: {rows[0]['reason']}\n[Ticket Transcript]({rows[0]['transcript']})",
                     color = discord.Color.from_str(self.data["EMBED_COLOR"])
                 )
-            embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
+            logo_url = get_embed_logo_url(self.data["LOGO"])
+            embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
             return embed
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -174,12 +176,18 @@ class Questions(discord.ui.Modal):
                     new_description += f"**{item.label}**\n{item.value}\n \n"
             new_description += "\n\n".join(split[2:])
             embed = discord.Embed(description=new_description, color=discord.Color.from_str(self.data["EMBED_COLOR"]))
+            
+            # Set footer BEFORE editing the message
+            logo_url = get_embed_logo_url(self.data["LOGO"])
+            embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+            
+            # Get previous ticket and edit message with both embeds (or just one if no previous)
             previous_ticket: discord.Embed = await self.get_previous_ticket(owner_id = interaction.user.id)
             if previous_ticket:
                 await interaction.message.edit(embeds = [embed, previous_ticket], view = None)
             else:
-                embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
                 await interaction.message.edit(embed = embed, view = None)
+            
             perms = interaction.channel.overwrites_for(interaction.user)
             perms.send_messages = perms.view_channel = True
             await interaction.channel.set_permissions(interaction.user, overwrite=perms)
@@ -227,13 +235,13 @@ class TicketSystem:
             return f"`❌` You are not verified! Go to the {channel.mention} channel and verify yourself first."
         return None
 
-    @task("Check 3 Tickets", False)
-    async def check_3_tickets(self, interaction: discord.Interaction) -> str:
+    @task("Check 5 Tickets", False)
+    async def check_5_tickets(self, interaction: discord.Interaction) -> str:
         row = execute(f"SELECT COUNT(*) AS open_ticket_count FROM tickets WHERE ownerID = '{interaction.user.id}' AND active = 'True'")
         open_ticket_count = row[0]["open_ticket_count"]
-        if open_ticket_count >= 3:
-            log_tasks.warning(f"{interaction.user} ({interaction.user.id}) has 3 tickets open and tried to open a ticket")
-            return "`❌` Failed! You already have 3 tickets open!"
+        if open_ticket_count >= 5:
+            log_tasks.warning(f"{interaction.user} ({interaction.user.id}) has 5 tickets open and tried to open a ticket")
+            return "`❌` Failed! You already have **5** tickets open!"
         return None
 
     @task("Check Blacklisted", False)
@@ -247,7 +255,7 @@ class TicketSystem:
 
     @task("Check Disabled", False)
     async def check_disabled(self, interaction: discord.Interaction) -> str:
-        with open("MinecadiaTickets/Assets/tickets.json", "r") as file:
+        with open("Assets/tickets.json", "r") as file:
             info = json.load(file)
             
         if info['TOGGLE_STATUS'] == 'Disabled':
@@ -265,13 +273,48 @@ class TicketSystem:
         
         return None
 
+    @task("Check Recent Open", False)
+    async def check_recent_open(self, interaction: discord.Interaction) -> str:
+        row = execute(f"""
+            SELECT opened_at FROM tickets 
+            WHERE ownerID = '{interaction.user.id}' 
+            ORDER BY opened_at DESC 
+            LIMIT 1
+        """)
+        
+        if row:
+            last_opened = float(row[0]["opened_at"])
+            if time.time() - last_opened < 300: 
+                log_tasks.warning(f"{interaction.user} ({interaction.user.id}) opened a ticket too recent.")
+                return "`❌` You're opening tickets too fast! Please try again later."
+        return None
+    
+    @task("Check Recent Closed", False)
+    async def check_recent_closed(self, interaction: discord.Interaction) -> str:
+        row = execute(f"""
+            SELECT closed_at FROM tickets 
+            WHERE ownerID = '{interaction.user.id}' AND active = 'False'
+            ORDER BY closed_at DESC 
+            LIMIT 1
+        """)
+        
+        if row and row[0]["closed_at"]:
+            last_closed = int(row[0]["closed_at"])
+            if time.time() - last_closed < 120: 
+                log_tasks.warning(f"{interaction.user} ({interaction.user.id}) had a recently closed ticket.")
+                return "`❌` Your last ticket was just closed! Please try again later."
+        return None
+
+
     @task("Check", False)
     async def check(self, interaction: discord.Interaction):
         check_functions: list = [
             self.check_verified,
-            self.check_3_tickets,
+            self.check_5_tickets,
             self.check_blacklisted,
-            self.check_disabled
+            self.check_disabled,
+            self.check_recent_open,
+            self.check_recent_closed
         ]
 
         for check_function in check_functions:
@@ -328,8 +371,9 @@ class TicketSystem:
             color = discord.Color.from_str(self.data["EMBED_COLOR"]),
             description = description
         )
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
-        await channel.send(embed = embed, view = InfoButton(ticket_type, ticket_info))
+        logo_url = get_embed_logo_url(LOGO)
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        await channel.send(embed = embed, view = InfoButton(ticket_type, ticket_info), file = discord.File("Assets/Logo.png"))
         privated = "" 
         if any(substring in ticket_type for substring in ["Store Support", "Discord Issues", "Connection Issues"]):
             privated = "Admin"

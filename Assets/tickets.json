@@ -1,6 +1,6 @@
 {
    "TOGGLE_STATUS": "Enabled",
-   "Minecadia Store Support": {
+   "Store & Media Applications": {
       "Store Support": {
          "Status": "Enabled",
          "Ticket Logs": 1190693196716576878,
@@ -30,6 +30,47 @@
                "Label": "How can we help? Be as specific as possible",
                "Placeholder": "What's the issue?",
                "Length": "Long"
+            }
+         ]
+      },
+      "Media Applications": {
+         "Status": "Enabled",
+         "Ticket Logs": 1190693196716576878,
+         "Emoji": "\ud83d\udcfd\ufe0f",
+         "Description": "Click here to apply for Media Rank!",
+         "Category": 1410010191671328879,
+         "Message": "**Media Rank Requirements**:\n- Must have at least 2 videos or 1 stream on the Minecadia network, 1 being within 2 weeks of application date.\n- Applicants must have a clean punishment history (last 6 weeks).\n- Screenshot of video/stream statistics must be provided showing viewership and its audience/sourcing. \n- Quality of video & its content will be under consideration\n\n**Subscriber/Followers & Views Requirements:**\n<:youtube:1162951317967347752> **YouTube**: 500 Subscribers, 750 Average Views, Must have 1 video on Minecadia, Must be a recent video from within the last two weeks.\n<:twitch:1162951335927361536> **Twitch/Kick**: 300 Followers, 15 Average Views, 1 Prior Stream, Must have one recent stream from within the last two weeks\n\ud83d\udcf8 **TikTok/YouTube Shorts**: 1,000 Followers, 3,000 Minimum Views per TikTok, Must have 3 prior TikToks on the server",
+         "Roles": [
+            959755851911016508,
+            1223484322871251026,
+            1223484462617202748,
+            1223484398750666853,
+            918899729897779331,
+            1052722994511892551
+         ],
+         "Pings": [
+            959755851911016508
+         ],
+         "Questions": [
+            {
+               "Label": "What server will you be recording on?",
+               "Placeholder": "Factions, Kitmap, Lifesteal",
+               "Length": "Short"
+            },
+            {
+               "Label": "Please provide a link to your channel",
+               "Placeholder": "https://youtube.com/channel/...",
+               "Length": "Short"
+            },
+            {
+               "Label": "Link your most recent Minecadia video",
+               "Placeholder": "https://youtube.com/watch?=...",
+               "Length": "Short"
+            },
+            {
+               "Label": "Screenshot of your video statistics",
+               "Placeholder": "https://i.imgur.com/...",
+               "Length": "Short"
             }
          ]
       }
@@ -166,7 +207,7 @@
          "Emoji": "\ud83e\udea6",
          "Description": "Get your items back if you died in an unfair way",
          "Category": 1009740448128045149,
-         "Message": "Please read our revive rules to ensure you're eligible for a revive.\n \n**Revive Rules**\n- If your pre-pearl does not land you will not get revived. (pre-pearling is at your own risk)\n- Getting tp trapped does not result in a revive. However, if you report a player for /pvp trapping, and you die, you will be compensated for the lost items (provided they can be recovered)\n- You do not get revived for logging/lagging out in combat.\n- You cannot have nickname hider on\n- Keystrokes & CPS must be visible for item proc revives\n- Block glitches are NOT revivable\n- Videos must be from YOUR POV\n- If you die by someone who gets banned for cheating after your death, you will not get revived, UNLESS, your proof clearly shows them cheating.\n- If you die from a server bug and have evidence of your death and who picks up your items, you are eligible for a revive.\n- The video MUST show you dying.\n- The video MUST be submitted within 1 hour of the death.\n- The video MUST show your ping/ms.\n- The video MUST have your scoreboard included.\n- The video MUST be at least 30 seconds long.\n \nFailure to follow these rules will lead to your revive being denied.",
+         "Message": "Please read our revive rules to ensure you're eligible for a revive.\n \n**Revive Rules**\n- If your pre-pearl does not land you will not get revived. (pre-pearling is at your own risk)\n-# Eternal Pearls are the only exception.\n- You do not get revived for logging/lagging out in combat due to client sided issues.\n- You cannot have nickname hider on\n- Block glitches are NOT revivable\n- Videos must be from YOUR POV\n- You can only be revived for someone cheating **IF** it is your own POV and the evidence **MUST** show at least 3 spins.\n-# Evidence of players cheating after your fight is not accepted.\n- If you die from a server bug that causes your death and have evidence of such you are eligible for a revive.\n- Any form of aim-assist present in revive evidence will be instant denied.\n- The video MUST show you dying.\n- The video MUST be submitted within 1 hour of the death.\n- The video MUST have your scoreboard included.\n- The video MUST be at least 30 seconds long with a minimum 20 seconds of actual pvp.",
          "Roles": [
             952952934604369950,
             918899729897779331,
@@ -191,7 +232,7 @@
    },
    "KitMap Support": {
       "General Support": {
-         "Status": "Disabled",
+         "Status": "Enabled",
          "Ticket Logs": 944653873216376863,
          "Emoji": "\ud83d\uddd2\ufe0f",
          "Description": "General support/issues/questions for kitmap",
@@ -222,7 +263,7 @@
          ]
       },
       "Bug Report": {
-         "Status": "Disabled",
+         "Status": "Enabled",
          "Ticket Logs": 944653873216376863,
          "Emoji": "\u2755",
          "Description": "Exploits & bugs found on the kitmap realm",
@@ -252,7 +293,7 @@
          ]
       },
       "Player Reports": {
-         "Status": "Disabled",
+         "Status": "Enabled",
          "Ticket Logs": 944653873216376863,
          "Emoji": "\u2694\ufe0f",
          "Description": "Report cheaters and rule breakers on kitmap",
@@ -287,7 +328,7 @@
          ]
       },
       "Appeal Punishment": {
-         "Status": "Disabled",
+         "Status": "Enabled",
          "Ticket Logs": 944653873216376863,
          "Emoji": "\u26d3\ufe0f",
          "Description": "Appeal your punishment if you feel it was false",
@@ -316,12 +357,12 @@
          ]
       },
       "Revive Request": {
-         "Status": "Disabled",
+         "Status": "Enabled",
          "Ticket Logs": 944653873216376863,
          "Emoji": "\ud83e\udea6",
          "Description": "Get your items back if you died in an unfair way",
          "Category": 1047710462176940032,
-         "Message": "Please read our revive rules to ensure you're eligible for a revive.\n \n**Revive Rules**\n- If your pre-pearl does not land you will not get revived. (pre-pearling is at your own risk)\n- Getting tp trapped does not result in a revive. However, if you report a player for /pvp trapping, and you die, you will be compensated for the lost items (provided they can be recovered)\n- You do not get revived for logging/lagging out in combat.\n- You cannot have nickname hider on\n- Keystrokes & CPS must be visible for item proc revives\n- Block glitches are NOT revivable\n- Videos must be from YOUR POV\n- If you die by someone who gets banned for cheating after your death, you will not get revived, UNLESS, your proof clearly shows them cheating.\n- If you die from a server bug and have evidence of your death and who picks up your items, you are eligible for a revive.\n- The video MUST show you dying.\n- The video MUST be submitted within 1 hour of the death.\n- The video MUST show your ping/ms.\n- The video MUST have your scoreboard included.\n- The video MUST be at least 30 seconds long.\n \nFailure to follow these rules will lead to your revive being denied.",
+         "Message": "Please read our revive rules to ensure you're eligible for a revive.\n \n**Revive Rules**\n- If your pre-pearl does not land you will not get revived. (pre-pearling is at your own risk)\n-# Eternal Pearls are the only exception.\n- You do not get revived for logging/lagging out in combat due to client sided issues.\n- You cannot have nickname hider on\n- Block glitches are NOT revivable\n- Videos must be from YOUR POV\n- You can only be revived for someone cheating **IF** it is your own POV and the evidence **MUST** show at least 3 spins.\n-# Evidence of players cheating after your fight is not accepted.\n- If you die from a server bug that causes your death and have evidence of such you are eligible for a revive.\n- Any form of aim-assist present in revive evidence will be instant denied.\n- The video MUST show you dying.\n- The video MUST be submitted within 1 hour of the death.\n- The video MUST have your scoreboard included.\n- The video MUST be at least 30 seconds long with a minimum 20 seconds of actual pvp.",
          "Roles": [
             1223480907172679731,
             1223484398750666853,

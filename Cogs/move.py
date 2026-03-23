@@ -157,7 +157,9 @@ class Move(commands.Cog):
             description = f"{interaction.user.mention} has moved this ticket to **{category_name}**", 
             color = discord.Color.from_str(self.data["EMBED_COLOR"])
         )
-        confirmation_embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"]) 
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        confirmation_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url) 
         await interaction.edit_original_response(embed = confirmation_embed)
 
     @is_ticket()

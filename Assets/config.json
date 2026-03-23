@@ -1,5 +1,5 @@
 {
-    "LOGO": "https://i.imgur.com/fjIYhig.png",
+    "LOGO": "Assets/Logo.png",
     "FOOTER": "Minecadia Tickets Bot",
     "EMBED_COLOR": "0xF1C40F",
     "PRESENCE": "play.minecadia.com",
@@ -106,20 +106,12 @@
         1222021514954539178,
         1222021557967388723,
         1222021595078590546,
-        1222021642587340840
+        1222021642587340840,
+        1410010191671328879
     ],
     "ACTIVE_TICKETS_CACHE": {
         "ENTRIES": 1000,
         "MINUTES_TO_EXPIRE": 10
     },
-    "TICKET_BLACKLIST_WEBHOOK": "https://REMOVED",
-    "DATABASE_CONFIG": {
-        "host": "127.0.0.1",
-        "user": "discord_bot",
-        "database": "discord_bot",
-        "password": "REMOVED",
-        "port": 3306,
-        "autocommit": "True"
-    },
-    "TOKEN": "OTg4NjE2MzcxOTE3MTgwOTI5.GUIT2a.70dV-qiS3EyBfq3ofzX2qOuhhZEL-KNanS5tok"
+    "_comment": "TOKEN, DATABASE_CONFIG, TICKET_BLACKLIST_WEBHOOK are in .env"
 }

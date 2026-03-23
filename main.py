@@ -6,7 +6,7 @@ import discord
 import os
 
 
-COG_FILES = [file.split(".")[0].title() for file in os.listdir("MinecadiaTickets/Cogs/") if file.endswith(".py")]
+COG_FILES = [file.split(".")[0].title() for file in os.listdir("Cogs/") if file.endswith(".py")]
 
 
 class Client(commands.Bot):

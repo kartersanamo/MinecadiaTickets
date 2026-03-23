@@ -72,8 +72,10 @@ class Remove(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]),
             description = f"{interaction.user.mention} has removed {user.mention} from the ticket {interaction.channel.mention}"
         )
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
-        await interaction.response.send_message(embed = embed)
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        await interaction.response.send_message(embed = embed, file = discord.File("Assets/Logo.png"))
 
     @task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:

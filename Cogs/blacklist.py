@@ -122,8 +122,10 @@ class Blacklist(commands.Cog):
         embed = discord.Embed(
             description = f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
             color = discord.Color.from_str(self.data['EMBED_COLOR']))
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
-        await interaction.response.send_message(embed = embed)
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        await interaction.response.send_message(embed = embed, file = discord.File("Assets/Logo.png"))
 
     @task("Send Webhook", False)
     async def send_webhook(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:

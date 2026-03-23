@@ -97,8 +97,10 @@ class Private(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = f"{interaction.user.mention} {description}"
         )
-        embed.set_footer(text = self.data['FOOTER'], icon_url = self.data["LOGO"])
-        await interaction.followup.send(embed = embed)
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data['FOOTER'], icon_url = logo_url)
+        await interaction.followup.send(embed = embed, file = discord.File("Assets/Logo.png"))
 
     @task("Private Command", True)
     async def private_command(self, interaction: discord.Interaction) -> None:

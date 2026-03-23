@@ -86,7 +86,9 @@ class ActiveTickets(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]),
             description = description
         )
-        embed.set_footer(text = self.data["FOOTER"], icon_url = self.data["LOGO"])
+        from Assets.functions import get_embed_logo_url
+        logo_url = get_embed_logo_url(self.data["LOGO"])
+        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
         await interaction.edit_original_response(content = None, embed = embed)
 
     @app_commands.guild_only()

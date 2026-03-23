@@ -10,7 +10,7 @@ RESET = "\033[0m"
 
 EST = pytz.timezone('US/Eastern')
 current_time_est = datetime.datetime.now(EST)
-log_filename = f"MinecadiaTickets/Logs/{current_time_est.strftime('%Y-%m-%d')}.log"
+log_filename = f"Logs/{current_time_est.strftime('%Y-%m-%d')}.log"
 
 class ESTFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):

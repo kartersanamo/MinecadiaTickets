@@ -1,5 +1,5 @@
 while true
 do
-python3 MinecadiaTickets/main.py
+python3 "main.py"
 sleep 5
 done
