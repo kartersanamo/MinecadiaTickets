@@ -1,9 +1,12 @@
-from Assets.functions import get_data, log_tasks, log_commands, task
+from Assets.functions import get_data, log_tasks, log_commands, task, get_embed_logo_url
 from discord import app_commands
+from discord.enums import SeparatorSpacing
 from discord.ext import commands
+from typing import List, Optional, Tuple
 import cachetools
 import discord
 import asyncio
+import os
 
 
 class ActiveTickets(commands.Cog):
@@ -30,13 +33,13 @@ class ActiveTickets(commands.Cog):
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
             if self.cache[cache_key]:
-                tickets.append(f"{channel.mention} {channel.category.name}")
+                tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
             return
 
         try:
             async for message in channel.history(limit = None):
                 if message.author.id == user_id:
-                    tickets.append(f"{channel.mention} {channel.category.name}")
+                    tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
                     self.cache[cache_key] = True
                     return
             self.cache[cache_key] = False  
@@ -46,7 +49,7 @@ class ActiveTickets(commands.Cog):
             self.cache[cache_key] = False
 
     @task("Get Tickets", True)
-    async def get_tickets_list(self, interaction: discord.Interaction) -> list:
+    async def get_tickets_list(self, interaction: discord.Interaction) -> List[Tuple[str, str]]:
         """
         This function retrieves a list of tickets that the user is actively speaking in.
         It iterates through the specified ticket categories, checks each ticket channel for new messages,
@@ -56,9 +59,9 @@ class ActiveTickets(commands.Cog):
         - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
 
         Returns:
-        - tickets (list): A list of strings, where each string is a formatted mention and category name of a ticket channel.
+        - tickets (list): A list of (channel mention, category name) tuples.
         """
-        tickets: list = []
+        tickets: List[Tuple[str, str]] = []
         for category_id in self.data["TICKET_CATEGORIES"]:
             category = interaction.guild.get_channel(category_id)
             if category:
@@ -67,29 +70,108 @@ class ActiveTickets(commands.Cog):
 
         return tickets
 
-    @task("Send Embed", False)
-    async def send_embed(self, interaction: discord.Interaction, tickets: list) -> None:
-        """
-        This function sends an embed to the Discord interaction with a list of tickets.
-        If the list is empty, it sends a message indicating no active tickets found.
+    @staticmethod
+    def _chunk_line_blocks(lines: List[str], max_chunk: int) -> List[str]:
+        blocks: List[str] = []
+        cur: List[str] = []
+        size = 0
+        for line in lines:
+            add = len(line) + (1 if cur else 0)
+            if cur and size + add > max_chunk:
+                blocks.append("\n".join(cur))
+                cur = [line]
+                size = len(line)
+            else:
+                cur.append(line)
+                size += add
+        if cur:
+            blocks.append("\n".join(cur))
+        return blocks
 
-        Parameters:
-        - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
-        - tickets (list): A list of strings, where each string is a formatted mention and category name of a ticket channel.
+    def _build_active_tickets_layout(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
+        accent = discord.Color.from_str(self.data["EMBED_COLOR"])
+        logo_path = self.data.get("LOGO")
+        logo_url = get_embed_logo_url(logo_path)
+        logo_files: List[discord.File] = []
 
-        Returns:
-        - None: The function does not return anything. It sends a Discord message using the interaction object.
-        """
-        description: str = "\n".join(tickets) if tickets else "No active tickets found"
-        embed = discord.Embed(
-            title = f"{interaction.user.name}'s Active Tickets",
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]),
-            description = description
+        view = discord.ui.LayoutView(timeout = None)
+        inner: list = []
+
+        title_block = (
+            f"# Active Tickets\n"
+            f"Tickets where **{interaction.user.mention}** has sent at least one message."
         )
-        from Assets.functions import get_embed_logo_url
-        logo_url = get_embed_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
-        await interaction.edit_original_response(content = None, embed = embed)
+        if tickets:
+            title_block += f"\n\n**{len(tickets)}** open channel{'s' if len(tickets) != 1 else ''}."
+        else:
+            title_block += "\n\n*You are not active in any ticket channels right now.*"
+
+        thumb_desc = (self.data.get("FOOTER") or "Logo")[:256]
+        use_section = False
+        thumb_media: Optional[str] = None
+        if logo_url:
+            if logo_url.startswith("attachment://") and logo_path and os.path.isfile(logo_path):
+                fname = os.path.basename(logo_path)
+                logo_files.append(discord.File(logo_path, filename = fname))
+                thumb_media = f"attachment://{fname}"
+                use_section = True
+            elif logo_url.startswith(("http://", "https://")):
+                thumb_media = logo_url
+                use_section = True
+
+        if use_section and thumb_media:
+            inner.append(
+                discord.ui.Section(
+                    discord.ui.TextDisplay(title_block),
+                    accessory = discord.ui.Thumbnail(thumb_media, description = thumb_desc),
+                )
+            )
+        else:
+            inner.append(discord.ui.TextDisplay(title_block))
+
+        inner.append(discord.ui.Separator(visible = True, spacing = SeparatorSpacing.large))
+
+        if tickets:
+            lines: List[str] = []
+            for mention, cat in tickets:
+                safe_cat = cat.replace("`", "'")
+                lines.append(f"- {mention} — `{safe_cat}`")
+            for block in self._chunk_line_blocks(lines, 3500):
+                inner.append(discord.ui.TextDisplay(block))
+
+        inner.append(discord.ui.Separator(visible = True, spacing = SeparatorSpacing.small))
+        inner.append(
+            discord.ui.TextDisplay(f"{self.data['FOOTER']}")
+        )
+
+        container = discord.ui.Container(*inner, accent_color = accent)
+        view.add_item(container)
+
+        if view.content_length() > 4000:
+            view = discord.ui.LayoutView(timeout = None)
+            view.add_item(
+                discord.ui.Container(
+                    discord.ui.TextDisplay(
+                        "# Active Tickets\n"
+                        "Your ticket list is too long to display here. "
+                        "Please narrow your open tickets or ask staff for help."
+                    ),
+                    accent_color = accent,
+                )
+            )
+            return view, []
+        return view, logo_files
+
+    @task("Send Components V2 response", False)
+    async def send_active_tickets_response(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> None:
+        """
+        Sends the active-tickets result using Components V2 (LayoutView).
+        """
+        view, logo_files = self._build_active_tickets_layout(interaction, tickets)
+        edit_kw: dict = {"content": None, "embed": None, "view": view}
+        if logo_files:
+            edit_kw["attachments"] = logo_files
+        await interaction.edit_original_response(**edit_kw)
 
     @app_commands.guild_only()
     @app_commands.command(name="active-tickets", description="Returns which tickets you are actively speaking in")
@@ -111,7 +193,7 @@ class ActiveTickets(commands.Cog):
     async def activetickets_command(self, interaction: discord.Interaction) -> None:
         """
         This function is responsible for handling the execution of the 'activetickets' command in a Discord bot.
-        It defers the response, retrieves a list of active tickets for the user, and sends an embed with the ticket information.
+        It defers the response, retrieves a list of active tickets for the user, and sends a Components V2 layout.
 
         Parameters:
         - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
@@ -120,8 +202,8 @@ class ActiveTickets(commands.Cog):
         - None: The function does not return anything. It sends a Discord message using the interaction object.
         """
         await interaction.response.defer()
-        tickets: list = await self.get_tickets_list(interaction)
-        await self.send_embed(interaction, tickets)
+        tickets: List[Tuple[str, str]] = await self.get_tickets_list(interaction)
+        await self.send_active_tickets_response(interaction, tickets)
 
     @activetickets.error
     async def activetickets_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
