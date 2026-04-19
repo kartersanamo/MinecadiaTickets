@@ -120,22 +120,35 @@ class Questions(discord.ui.Modal):
                          custom_id=str(random.randint(0, 50000000000)))
         self.tickets = get_ticket_data()
         self.data = get_data()
+        # Headings in the same order as TextInput children — avoids reading ``TextInput.label``
+        # (deprecated in newer discord.py in favor of ``discord.ui.Label``).
+        self._modal_field_headings: list = []
         self.add_items()
 
     def add_items(self):
         try:
-            self.add_item(discord.ui.TextInput(label="What is your in game name?",
-                                            placeholder="My IGN is...",
-                                            style=discord.TextStyle.short,
-                                            custom_id=str(random.randint(0, 50000))))
+            ign_label = "What is your in game name?"
+            self.add_item(
+                discord.ui.TextInput(
+                    label = ign_label,
+                    placeholder = "My IGN is...",
+                    style = discord.TextStyle.short,
+                    custom_id = str(random.randint(0, 50000)),
+                )
+            )
+            self._modal_field_headings.append(ign_label)
             for question in self.ticket_info['Questions']:
                 style = discord.TextStyle.short if question['Length'] == "Short" else discord.TextStyle.long
-                input = discord.ui.TextInput(label=question['Label'],
-                                            placeholder=question['Placeholder'],
-                                            style=style,
-                                            custom_id=str(random.randint(0, 50000)))
+                q_label = question['Label']
+                input = discord.ui.TextInput(
+                    label = q_label,
+                    placeholder = question['Placeholder'],
+                    style = style,
+                    custom_id = str(random.randint(0, 50000)),
+                )
                 self.add_item(input)
-    
+                self._modal_field_headings.append(q_label)
+
         except Exception as e:
             log_tasks.error(f"Failed to add items to the Questions modal {e}")
 
@@ -169,11 +182,13 @@ class Questions(discord.ui.Modal):
             embed = interaction.message.embeds[0]
             split = embed.description.split("\n\n")
             new_description = f"{split[0]}\n \n{split[1]}\n \n"
-            for item in self.children:
-                if item.label == "What is your in game name?" or item.label == "What is the offending player's IGN?":
-                    new_description += f"**{item.label}**\n`{item.value}`\n \n"
+            for heading, item in zip(self._modal_field_headings, self.children):
+                if not isinstance(item, discord.ui.TextInput):
+                    continue
+                if heading == "What is your in game name?" or heading == "What is the offending player's IGN?":
+                    new_description += f"**{heading}**\n`{item.value}`\n \n"
                 else:
-                    new_description += f"**{item.label}**\n{item.value}\n \n"
+                    new_description += f"**{heading}**\n{item.value}\n \n"
             new_description += "\n\n".join(split[2:])
             embed = discord.Embed(description=new_description, color=discord.Color.from_str(self.data["EMBED_COLOR"]))
             
