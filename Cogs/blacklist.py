@@ -103,7 +103,7 @@ class Blacklist(commands.Cog):
         None
         """
         unix = await self.get_unix(length)
-        execute(f"INSERT INTO blacklists(userID, reason, staffID, whenToUnbl) VALUES ('{user.id}', '{reason or 'N/A'}', '{interaction.user.id}', '{unix}')")
+        execute(f"INSERT INTO blacklists(userID, reason, staffID, whenToUnbl, created_at) VALUES ('{user.id}', '{reason or 'N/A'}', '{interaction.user.id}', '{unix}', '{int(__import__('time').time())}')")
         log_commands.info(f"Ticket blacklisted {user} ({user.id}) for {length}")
 
     @task("Send Embed", False)

@@ -4,6 +4,9 @@ import discord
 import random
 import json
 import time
+import os
+import asyncio
+import aiohttp
 
 LOGO = "Assets/Logo.png"
 
@@ -208,6 +211,20 @@ class Questions(discord.ui.Modal):
             await interaction.channel.set_permissions(interaction.user, overwrite=perms)
             await tags.delete()
             log_tasks.info(f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{interaction.channel} ({interaction.channel.id})")
+
+            # Notify dashboard viewers only after the opener submits the info modal.
+            rows = execute(
+                f"SELECT number FROM tickets WHERE channelID = '{interaction.channel.id}' LIMIT 1"
+            )
+            if rows:
+                asyncio.create_task(
+                    TicketSystem().notify_dashboard_new_ticket(
+                        channel=interaction.channel,
+                        number=int(rows[0]["number"]),
+                        ticket_type=self.ticket_type,
+                        owner_id=interaction.user.id,
+                    )
+                )
             
         except Exception as e:
             log_tasks.error(f"{interaction.user} ({interaction.user.id}) failed to add question answers into embed {e}")
@@ -235,6 +252,65 @@ class TicketSystem:
     def __init__(self):
         self.data: dict = get_data()
         self.tickets = get_ticket_data()
+
+    @task("Check Cooldown Bypass", False)
+    async def has_ticket_cooldown_bypass(
+        self, interaction: discord.Interaction
+    ) -> bool:
+        """
+        Staff Team + '*' (administrator perms) role bypasses ticket open cooldown checks.
+        """
+        role_ids = self.data.get("ROLE_IDS", {})
+        bypass_ids = {
+            int(role_ids.get("STAFF_TEAM_ROLE_ID", 0)),
+            int(role_ids.get("ADMINISTRATOR_PERMS_ROLE_ID", 0)),
+        }
+        bypass_ids.discard(0)
+        if not bypass_ids:
+            return False
+        member_role_ids = {int(r.id) for r in interaction.user.roles}
+        return bool(member_role_ids & bypass_ids)
+
+    async def notify_dashboard_new_ticket(
+        self,
+        channel: discord.TextChannel,
+        number: int,
+        ticket_type: str,
+        owner_id: int,
+    ) -> None:
+        """
+        Notify the dashboard about a newly created ticket.
+        Uses the shared bot API secret as auth when configured.
+        """
+        base_url = os.getenv("DASHBOARD_URL", "https://bots.kartersanamo.com").rstrip("/")
+        endpoint = (
+            os.getenv("DASHBOARD_TICKET_NOTIFY_URL", "").strip()
+            or f"{base_url}/api/tickets/live-events"
+        )
+        secret = os.getenv("TICKETS_BOT_API_SECRET") or os.getenv("CONTROL_API_SECRET")
+        if not endpoint or not secret:
+            return
+
+        payload = {
+            "kind": "ticket_created",
+            "channelId": str(channel.id),
+            "ticketNumber": str(number),
+            "ticketType": str(ticket_type),
+            "ownerId": str(owner_id),
+            "channelName": str(channel.name),
+        }
+        headers = {"X-Tickets-Key": secret, "Content-Type": "application/json"}
+        timeout = aiohttp.ClientTimeout(total=2.5)
+        try:
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(endpoint, json=payload, headers=headers) as resp:
+                    if resp.status >= 400:
+                        body = await resp.text()
+                        log_tasks.warning(
+                            f"Dashboard new-ticket notify failed ({resp.status}): {body[:200]}"
+                        )
+        except Exception as e:
+            log_tasks.warning(f"Dashboard new-ticket notify error: {e}")
 
     @task("Get Ticket Count", False)
     async def get_ticket_count(self) -> int:
@@ -290,6 +366,8 @@ class TicketSystem:
 
     @task("Check Recent Open", False)
     async def check_recent_open(self, interaction: discord.Interaction) -> str:
+        if await self.has_ticket_cooldown_bypass(interaction):
+            return None
         row = execute(f"""
             SELECT opened_at FROM tickets 
             WHERE ownerID = '{interaction.user.id}' 
@@ -306,6 +384,8 @@ class TicketSystem:
     
     @task("Check Recent Closed", False)
     async def check_recent_closed(self, interaction: discord.Interaction) -> str:
+        if await self.has_ticket_cooldown_bypass(interaction):
+            return None
         row = execute(f"""
             SELECT closed_at FROM tickets 
             WHERE ownerID = '{interaction.user.id}' AND active = 'False'
@@ -395,7 +475,7 @@ class TicketSystem:
         elif "Management Contact" in ticket_type:
             privated = "Management"
         execute(f"INSERT INTO tickets (channelID, ownerID, type, opened_at, number, active, closed_by, closed_at, reason, name, transcript, privated) VALUES ('{channel.id}', '{interaction.user.id}', '{category.name}', '{int(time.time())}', '{number}', 'True', ' ', ' ', ' ', ' ', ' ', '{privated}')")
-        
+
         return channel
             
     @task("New Ticket", False)

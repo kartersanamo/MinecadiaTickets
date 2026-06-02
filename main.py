@@ -1,9 +1,18 @@
 from Cogs.sendtickets import TicketsView, TicketsView2, TicketLogs
 from Assets.functions import get_data, task, log_tasks
+from Assets.dashboard_http import start_dashboard_http
 from discord.ext import commands
 from discord import app_commands
+from pathlib import Path
+from dotenv import load_dotenv
 import discord
 import os
+
+_bots_env = (
+    Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
+)
+if _bots_env.exists():
+    load_dotenv(_bots_env)
 
 
 COG_FILES = [file.split(".")[0].title() for file in os.listdir("Cogs/") if file.endswith(".py")]
@@ -128,7 +137,17 @@ class Client(commands.Bot):
         - None. This function does not raise any exceptions.
         """
         await self.setup_cogs()
+        import sys
+        from pathlib import Path
+
+        _minecadia = Path(__file__).resolve().parent.parent
+        if str(_minecadia) not in sys.path:
+            sys.path.insert(0, str(_minecadia))
+        from _analytics.register import register_command_tracking
+
+        await register_command_tracking(self)
         await self.add_views()
+        await start_dashboard_http(self)
     
     @task("Logging in")
     async def on_ready(self):

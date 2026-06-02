@@ -1,5 +1,15 @@
 from Assets.functions import seconds_to_format, is_found, get_data, is_ticket, execute, task, log_commands, log_tasks
 from discord.ext import commands
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+try:
+    from _analytics import logger as analytics
+except ImportError:
+    analytics = None
 from discord import app_commands
 import datetime
 import requests
@@ -223,54 +233,67 @@ class Close(commands.Cog):
         return embed
     
     @task("Send Ticketlog", False)
-    async def send_ticket_log(self, interaction: discord.Interaction, embed: discord.Embed, privated: str) -> None:
-        """
-        Sends a ticket log to the appropriate channel and DMs the relevant members.
+    async def send_ticket_log(
+        self,
+        guild: discord.Guild,
+        channel: discord.TextChannel,
+        embed: discord.Embed,
+        privated: str,
+    ) -> None:
+        channel_json_string = (
+            "ADMIN_TICKET_LOGS_ID"
+            if privated == "Admin"
+            else "MANAGEMENT_TICKET_LOGS_ID"
+            if privated == "Management"
+            else "TICKET_LOGS_ID"
+        )
+        ticket_log_channel_id = self.data["CHANNEL_IDS"][channel_json_string]
+        ticket_log_channel = guild.get_channel(ticket_log_channel_id)
+        await ticket_log_channel.send(
+            embed=embed, file=discord.File("Assets/Logo.png")
+        )
 
-        Parameters:
-        interaction (discord.Interaction): The interaction object representing the command invocation.
-        embed (discord.Embed): The embed containing the ticket log information.
-        privated (str): The type of ticket (Admin, Management, or an empty string for Public).
-
-        Returns:
-        None
-        """
-        channel_json_string = "ADMIN_TICKET_LOGS_ID" if privated == "Admin" else "MANAGEMENT_TICKET_LOGS_ID" if privated == "Management" else "TICKET_LOGS_ID"
-        ticket_log_channel_id = self.data['CHANNEL_IDS'][channel_json_string]
-        ticket_log_channel = interaction.guild.get_channel(ticket_log_channel_id)
-        await ticket_log_channel.send(embed=embed, file=discord.File("Assets/Logo.png"))
-
-        tasks = [overwrite.create_dm() for overwrite in interaction.channel.overwrites
-                if isinstance(overwrite, discord.Member) and not overwrite.bot and interaction.channel.permissions_for(overwrite).view_channel]
+        tasks = [
+            overwrite.create_dm()
+            for overwrite in channel.overwrites
+            if isinstance(overwrite, discord.Member)
+            and not overwrite.bot
+            and channel.permissions_for(overwrite).view_channel
+        ]
 
         try:
             dm_channels = await asyncio.gather(*tasks)
-            send_tasks = [channel.send(embed=embed, file=discord.File("Assets/Logo.png")) for channel in dm_channels if channel]
+            send_tasks = [
+                dm.send(embed=embed, file=discord.File("Assets/Logo.png"))
+                for dm in dm_channels
+                if dm
+            ]
             await asyncio.gather(*send_tasks)
         except Exception as error:
             log_tasks.warning(f"Failed to send ticket log: {error}")
 
     @task("Update Database")
-    async def update_database(self, interaction: discord.Interaction, reason: str, name: str, link: str, closed_at_timestamp: int, channel_id: int, closed_by_id: int) -> None:
-        """
-        Updates the database with the ticket closure information.
-
-        Parameters:
-        interaction (discord.Interaction): The interaction object representing the command invocation.
-        reason (str): The reason for closing the ticket.
-        name (str): The name of the ticket channel.
-        link (str): The link to the ticket transcript.
-        closed_at_timestamp (int): The timestamp of when the ticket was closed.
-
-        Returns:
-        None
-        """
-        tickets_closed_stat = await is_found(interaction.user, "tickets_closed")
-        
+    async def update_database(
+        self,
+        closed_by: discord.Member,
+        reason: str,
+        name: str,
+        link: str,
+        closed_at_timestamp: int,
+        channel_id: int,
+        closed_by_id: int,
+    ) -> None:
+        tickets_closed_stat = await is_found(closed_by, "tickets_closed")
         new_ticket_closed_stat: int = tickets_closed_stat + 1
 
-        execute(f"UPDATE tickets SET active = 'False', closed_by = '{closed_by_id}', closed_at = '{closed_at_timestamp}', reason = '{reason}', name = '{name}', transcript = '{link}' WHERE channelID = '{channel_id}'")
-        execute(f"UPDATE statistics SET tickets_closed = '{new_ticket_closed_stat}' WHERE user_ID = '{closed_by_id}'")
+        execute(
+            f"UPDATE tickets SET active = 'False', closed_by = '{closed_by_id}', closed_at = '{closed_at_timestamp}', reason = '{reason}', name = '{name}', transcript = '{link}' WHERE channelID = '{channel_id}'"
+        )
+        execute(
+            f"UPDATE statistics SET tickets_closed = '{new_ticket_closed_stat}' WHERE user_ID = '{closed_by_id}'"
+        )
+        if analytics:
+            analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 
     @task("Fetch Ticket Info")
     async def fetch_ticket_info(self, channelID: int) -> tuple:
@@ -335,42 +358,91 @@ class Close(commands.Cog):
         None
         """
         await self.close_command(interaction, reason)
-    
+
     @task("Close Command", False)
     async def close_command(self, interaction: discord.Interaction, reason: str) -> None:
-        """
-        This function closes the ticket channel.
-
-        Parameters:
-        interaction (discord.Interaction): The interaction object representing the command invocation.
-        reason (str): The reason for closing the ticket.
-
-        Returns:
-        None
-        """
         await interaction.response.defer()
-    
-        start = time.perf_counter()
-        messages = await self.fetch_all_messages(interaction.channel)
-        channel_id = interaction.channel.id
-        owner, owner_id, owner_mention, opened_timestamp, opened_string, ticket_number, ticket_type, privated, closed_at_timestamp, closed_at_string = await self.fetch_ticket_info(channel_id)
+        if interaction.guild is None:
+            return
+        await self.close_ticket_channel(
+            interaction.guild,
+            interaction.channel,
+            interaction.user,
+            reason,
+        )
 
-        name = interaction.channel.name
+    @task("Close Ticket Channel", False)
+    async def close_ticket_channel(
+        self,
+        guild: discord.Guild,
+        channel: discord.TextChannel,
+        closed_by: discord.Member,
+        reason: str,
+    ) -> None:
+        """Full /close flow — used by slash command and dashboard API."""
+        start = time.perf_counter()
+        messages = await self.fetch_all_messages(channel)
+        channel_id = channel.id
+        (
+            owner,
+            owner_id,
+            owner_mention,
+            opened_timestamp,
+            opened_string,
+            ticket_number,
+            ticket_type,
+            privated,
+            closed_at_timestamp,
+            closed_at_string,
+        ) = await self.fetch_ticket_info(channel_id)
+
+        name = channel.name
         reason = reason.replace("'", " ")
-        closed_by = interaction.user
-        closed_by_id = interaction.user.id
-        content = await self.generate_transcript_content(messages, opened_string, ticket_type, ticket_number, owner, owner_id, reason, closed_by, channel_id, closed_at_string, closed_by_id)
+        closed_by_id = closed_by.id
+        content = await self.generate_transcript_content(
+            messages,
+            opened_string,
+            ticket_type,
+            ticket_number,
+            owner,
+            owner_id,
+            reason,
+            closed_by,
+            channel_id,
+            closed_at_string,
+            closed_by_id,
+        )
 
         link = await self.return_link(content)
 
-        embed = await self.get_ticket_log(reason, opened_timestamp, ticket_number, owner_mention, owner, link, ticket_type, closed_at_timestamp, closed_by)
-        await self.send_ticket_log(interaction, embed, privated)
-        await self.update_database(interaction, reason, name, link, closed_at_timestamp, channel_id, closed_by_id)
+        embed = await self.get_ticket_log(
+            reason,
+            opened_timestamp,
+            ticket_number,
+            owner_mention,
+            owner,
+            link,
+            ticket_type,
+            closed_at_timestamp,
+            closed_by,
+        )
+        await self.send_ticket_log(guild, channel, embed, privated)
+        await self.update_database(
+            closed_by,
+            reason,
+            name,
+            link,
+            closed_at_timestamp,
+            channel_id,
+            closed_by_id,
+        )
 
-        await interaction.channel.delete()
-        
+        await channel.delete()
+
         ticket_count = await self.get_ticket_count()
-        log_commands.info(f"Closed #{name} ({channel_id}) in {str(round((time.perf_counter() - start), 2))}s by {closed_by} ({closed_by_id}) {ticket_count}")
+        log_commands.info(
+            f"Closed #{name} ({channel_id}) in {str(round((time.perf_counter() - start), 2))}s by {closed_by} ({closed_by_id}) {ticket_count}"
+        )
 
     @close.error
     async def close_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
