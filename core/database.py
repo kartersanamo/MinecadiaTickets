@@ -1,36 +1,45 @@
 import mysql.connector
+from typing import Optional
 
-from core.config import get_settings
+from core.config import ConfigLoader
 from core.loggers import log_tasks
 
-_pool = None
 
+class DatabasePool:
+    _instance: Optional["DatabasePool"] = None
 
-def create_pool():
-    global _pool
-    data = get_settings()
-    config = {
-        "host": data["DATABASE_CONFIG"]["host"],
-        "port": data["DATABASE_CONFIG"]["port"],
-        "user": data["DATABASE_CONFIG"]["user"],
-        "password": data["DATABASE_CONFIG"]["password"],
-        "database": data["DATABASE_CONFIG"]["database"],
-        "autocommit": bool(data["DATABASE_CONFIG"]["autocommit"]),
-    }
-    _pool = mysql.connector.connect(**config)
+    @classmethod
+    def get(cls) -> "DatabasePool":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def connect(self):
+        cfg = ConfigLoader.get()["DATABASE_CONFIG"]
+        return mysql.connector.connect(
+            host=cfg["host"],
+            port=cfg["port"],
+            user=cfg["user"],
+            password=cfg["password"],
+            database=cfg["database"],
+            autocommit=bool(cfg.get("autocommit", True)),
+        )
+
+    def execute(self, query: str) -> list:
+        rows = []
+        connection = None
+        try:
+            connection = self.connect()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query)
+            rows = cursor.fetchall()
+        except Exception as error:
+            log_tasks.error(f"Error executing query: {query} {error}")
+        finally:
+            if connection:
+                connection.close()
+        return rows
 
 
 def execute(query: str) -> list:
-    global _pool
-    if _pool is None:
-        create_pool()
-
-    rows: list = []
-    try:
-        cursor = _pool.cursor(dictionary=True)
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        cursor.close()
-    except Exception as error:
-        log_tasks.error(f"Error executing query: {query} {error}")
-    return rows
+    return DatabasePool.get().execute(query)

@@ -178,7 +178,7 @@ class Close(commands.Cog):
         ticket_log_channel_id = self.data["CHANNEL_IDS"][channel_json_string]
         ticket_log_channel = guild.get_channel(ticket_log_channel_id)
         await ticket_log_channel.send(
-            embed=embed, file=discord.File("Assets/Logo.png")
+            embed=embed, file=discord.File("assets/Logo.png")
         )
 
         tasks = [
@@ -192,7 +192,7 @@ class Close(commands.Cog):
         try:
             dm_channels = await asyncio.gather(*tasks)
             send_tasks = [
-                dm.send(embed=embed, file=discord.File("Assets/Logo.png"))
+                dm.send(embed=embed, file=discord.File("assets/Logo.png"))
                 for dm in dm_channels
                 if dm
             ]

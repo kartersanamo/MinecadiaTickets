@@ -26,7 +26,7 @@ class Rename(commands.Cog):
         )
         logo_url = get_embed_logo_url(self.data["LOGO"])
         rename_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
-        await interaction.response.send_message(embed = rename_embed, file = discord.File("Assets/Logo.png"))
+        await interaction.response.send_message(embed = rename_embed, file = discord.File("assets/Logo.png"))
 
     @is_ticket()
     @app_commands.guild_only()

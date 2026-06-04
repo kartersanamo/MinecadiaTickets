@@ -45,7 +45,7 @@ class Private(commands.Cog):
         )
         logo_url = get_embed_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data['FOOTER'], icon_url = logo_url)
-        await interaction.followup.send(embed = embed, file = discord.File("Assets/Logo.png"))
+        await interaction.followup.send(embed = embed, file = discord.File("assets/Logo.png"))
 
     @task("Private Command", True)
     async def private_command(self, interaction: discord.Interaction) -> None:

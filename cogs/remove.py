@@ -38,7 +38,7 @@ class Remove(commands.Cog):
         )
         logo_url = get_embed_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
-        await interaction.response.send_message(embed = embed, file = discord.File("Assets/Logo.png"))
+        await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
     @task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:

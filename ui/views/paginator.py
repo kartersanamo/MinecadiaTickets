@@ -2,7 +2,7 @@ import discord
 
 from utils.embeds import get_embed_logo_url
 
-LOGO = "Assets/Logo.png"
+LOGO = "assets/Logo.png"
 
 
 class Paginator(discord.ui.View):

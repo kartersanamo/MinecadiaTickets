@@ -2,4 +2,4 @@
 *.log
 *.py[cod]
 .venv/
-Logs/
+logs/
