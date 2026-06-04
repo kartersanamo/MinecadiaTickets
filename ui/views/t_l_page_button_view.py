@@ -10,6 +10,8 @@ import os
 import pytz
 from core.config import get_data
 from core.database import execute
+from ui.views.ticket_log_u_i_state_view import TicketLogUIState
+from ui.views.ticket_logs_v2_support import _tl_edit
 
 
 PAGE_SIZE = 25

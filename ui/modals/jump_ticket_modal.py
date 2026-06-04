@@ -10,6 +10,7 @@ import os
 import pytz
 from core.config import get_data
 from core.database import execute
+from ui.views.ticket_log_u_i_state_view import TicketLogUIState
 
 
 PAGE_SIZE = 25
@@ -254,6 +255,8 @@ class JumpTicketModal(discord.ui.Modal, title = "Jump to ticket #"):
             return
         self._state.detail_channel_id = int(row["channelID"])
         self._state.page = 0
+        from ui.views.ticket_logs_v2_layout_view import TicketLogsV2Layout
+
         view = TicketLogsV2Layout(interaction, self._state)
         kwargs: Dict[str, Any] = {"content": None, "view": view}
         if view._logo_files:

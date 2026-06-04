@@ -11,6 +11,15 @@ import os
 import pytz
 from core.config import get_data
 from core.database import execute
+from ui.views.ticket_log_u_i_state_view import TicketLogUIState
+from ui.views.t_l_back_button_view import TLBackButton
+from ui.views.t_l_jump_button_modal import TLJumpButton
+from ui.views.t_l_mode_select_view import TLModeSelect
+from ui.views.t_l_page_button_view import TLPageButton
+from ui.views.t_l_pick_select_view import TLPickSelect
+from ui.views.t_l_sort_select_view import TLSortSelect
+from ui.views.t_l_type_select_view import TLTypeSelect
+from ui.views.ticket_logs_v2_support import _row_by_channel
 
 
 PAGE_SIZE = 25
@@ -141,7 +150,10 @@ def _build_page_quick_link_chunks(
     return _chunk_text(body, 3400)
 
 
-def _logo_files_and_thumb(cfg: dict) -> Tuple[List[discord.File], Optional[str]]:
+def _logo_files_and_thumb(
+    interaction: discord.Interaction,
+    cfg: dict,
+) -> Tuple[List[discord.File], Optional[str]]:
     path = cfg.get("LOGO")
     url = interaction.client.app.embeds.get_logo_url(path)
     files: List[discord.File] = []
@@ -238,7 +250,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
         super().__init__(timeout = 600)
         self.state = state
         cfg = get_data()
-        self._logo_files, self._thumb = _logo_files_and_thumb(cfg)
+        self._logo_files, self._thumb = _logo_files_and_thumb(interaction, cfg)
         self._cfg = cfg
         rows = _fetch_rows(state.target.id, state.mode, state.sort_key, state.type_filter)
         self._rows = rows
