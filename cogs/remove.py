@@ -4,8 +4,7 @@ import discord
 from core.config import get_data
 from core.decorators import task
 from core.loggers import log_commands
-from domain.checks import is_ticket
-from utils.embeds import get_embed_logo_url
+from services.ticket_check_service import is_ticket
 
 class Remove(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -36,7 +35,7 @@ class Remove(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]),
             description = f"{interaction.user.mention} has removed {user.mention} from the ticket {interaction.channel.mention}"
         )
-        logo_url = get_embed_logo_url(self.data["LOGO"])
+        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 

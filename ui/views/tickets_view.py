@@ -1,14 +1,7 @@
-from discord.ext import commands
-from discord import app_commands
-from typing import Literal
 import discord
 import json
 from core.config import get_data
-from core.database import execute
-from core.decorators import task
-from core.loggers import log_commands, log_tasks
-from domain.ticket_system import TicketSystem
-from ui.views.paginator import Paginator
+from services.ticket_creation_service import TicketCreationService as TicketSystem
 
 
 class TicketsView(discord.ui.View):

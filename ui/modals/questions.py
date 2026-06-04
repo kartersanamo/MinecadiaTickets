@@ -7,7 +7,6 @@ from core.config import get_settings, get_ticket_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
-from utils.embeds import get_embed_logo_url
 
 
 class Questions(discord.ui.Modal):
@@ -82,7 +81,7 @@ class Questions(discord.ui.Modal):
                 ),
                 color=discord.Color.from_str(self.data["EMBED_COLOR"]),
             )
-        logo_url = get_embed_logo_url(self.data["LOGO"])
+        logo_url = interaction.client.app.embeds.get_logo_url(self.data["LOGO"])
         embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
         return embed
 
@@ -106,7 +105,7 @@ class Questions(discord.ui.Modal):
                 description=new_description, color=discord.Color.from_str(self.data["EMBED_COLOR"])
             )
 
-            logo_url = get_embed_logo_url(self.data["LOGO"])
+            logo_url = interaction.client.app.embeds.get_logo_url(self.data["LOGO"])
             embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
 
             previous_ticket: discord.Embed = await self.get_previous_ticket(
@@ -129,7 +128,7 @@ class Questions(discord.ui.Modal):
                 f"SELECT number FROM tickets WHERE channelID = '{interaction.channel.id}' LIMIT 1"
             )
             if rows:
-                from domain.ticket_system import TicketSystem
+                from services.ticket_creation_service import TicketCreationService as TicketSystem
 
                 asyncio.create_task(
                     TicketSystem().notify_dashboard_new_ticket(

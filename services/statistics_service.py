@@ -13,3 +13,7 @@ class StatisticsService:
             return rows[0][statistic]
         await self._repo.insert_default_row(user.id)
         return 0
+
+
+_default_statistics = StatisticsService()
+is_found = _default_statistics.get_statistic

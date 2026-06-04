@@ -1,3 +1,0 @@
-from services.ticket_creation_service import TicketCreationService
-
-TicketSystem = TicketCreationService

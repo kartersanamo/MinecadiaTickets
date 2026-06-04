@@ -4,7 +4,6 @@ Ticket logs slash command — Components V2 browser for closed tickets.
 from __future__ import annotations
 
 from discord import app_commands
-from discord.enums import SeparatorSpacing
 from discord.ext import commands
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from datetime import datetime
@@ -15,7 +14,6 @@ from core.config import get_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
-from utils.embeds import get_embed_logo_url
 
 
 PAGE_SIZE = 25
@@ -148,7 +146,7 @@ def _build_page_quick_link_chunks(
 
 def _logo_files_and_thumb(cfg: dict) -> Tuple[List[discord.File], Optional[str]]:
     path = cfg.get("LOGO")
-    url = get_embed_logo_url(path)
+    url = self.client.app.embeds.get_logo_url(path)
     files: List[discord.File] = []
     if not url:
         return [], None
@@ -235,15 +233,7 @@ def _format_detail_text(interaction: discord.Interaction, row: Dict[str, Any]) -
     )
     return _chunk_text(block, 3800)
 from ui.views.ticket_log_u_i_state_view import TicketLogUIState
-from ui.modals.jump_ticket_modal import JumpTicketModal
 from ui.views.ticket_logs_v2_layout_view import TicketLogsV2Layout
-from ui.views.t_l_mode_select_view import TLModeSelect
-from ui.views.t_l_sort_select_view import TLSortSelect
-from ui.views.t_l_type_select_view import TLTypeSelect
-from ui.views.t_l_pick_select_view import TLPickSelect
-from ui.views.t_l_page_button_view import TLPageButton
-from ui.views.t_l_jump_button_modal import TLJumpButton
-from ui.views.t_l_back_button_view import TLBackButton
 
 class TicketLogs(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:

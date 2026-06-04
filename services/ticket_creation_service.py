@@ -9,7 +9,6 @@ from core.config import get_settings, get_ticket_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
-from utils.embeds import get_embed_logo_url
 
 LOGO = "assets/Logo.png"
 
@@ -239,7 +238,7 @@ class TicketCreationService:
             color=discord.Color.from_str(self.data["EMBED_COLOR"]),
             description=description,
         )
-        logo_url = get_embed_logo_url(LOGO)
+        logo_url = interaction.client.app.embeds.get_logo_url(LOGO)
         embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
         from ui.views.info_button import InfoButton
 

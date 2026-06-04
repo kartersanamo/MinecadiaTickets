@@ -20,10 +20,8 @@ from core.config import get_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
-from domain.checks import is_ticket
-from domain.statistics import is_found
-from utils.embeds import get_embed_logo_url
-from utils.time import seconds_to_format
+from services.ticket_check_service import is_ticket
+from services.statistics_service import is_found
 
 class Close(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -148,14 +146,14 @@ class Close(commands.Cog):
         delta = "N/A"
         if opened_timestamp != "N/A":
             seconds = closed_at_timestamp - opened_timestamp
-            delta = seconds_to_format(seconds)
+            delta = self.client.app.time_format.seconds_to_format(seconds)
         
         desc = f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n **Reason:** {reason}\n **Owner:** {owner_mention} / {owner.name}\n **Ticket Duration:** {delta}\n[Ticket Transcript]({link})"
         embed = discord.Embed(
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = desc
         )
-        logo_url = get_embed_logo_url(self.data["LOGO"])
+        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
 
         return embed

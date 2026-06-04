@@ -9,7 +9,6 @@ import os
 from core.config import get_data
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
-from utils.embeds import get_embed_logo_url
 
 
 class ActiveTickets(commands.Cog):
@@ -70,7 +69,7 @@ class ActiveTickets(commands.Cog):
     def _build_active_tickets_layout(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
         accent = discord.Color.from_str(self.data["EMBED_COLOR"])
         logo_path = self.data.get("LOGO")
-        logo_url = get_embed_logo_url(logo_path)
+        logo_url = self.client.app.embeds.get_logo_url(logo_path)
         logo_files: List[discord.File] = []
 
         view = discord.ui.LayoutView(timeout = None)

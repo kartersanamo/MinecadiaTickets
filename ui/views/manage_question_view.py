@@ -1,6 +1,4 @@
 #from cogs.sendtickets import send_tickets_command
-from discord.ext import commands
-from discord import app_commands
 import discord
 import json
 from core.config import get_data

@@ -6,8 +6,7 @@ from core.config import get_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
-from domain.checks import is_ticket
-from utils.embeds import get_embed_logo_url
+from services.ticket_check_service import is_ticket
 
 class Private(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -43,7 +42,7 @@ class Private(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = f"{interaction.user.mention} {description}"
         )
-        logo_url = get_embed_logo_url(self.data["LOGO"])
+        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data['FOOTER'], icon_url = logo_url)
         await interaction.followup.send(embed = embed, file = discord.File("assets/Logo.png"))
 

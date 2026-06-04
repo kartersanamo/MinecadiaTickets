@@ -2,16 +2,9 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-import json
 from core.config import get_data
 from core.loggers import log_commands
 from ui.views.manage_categories_view import ManageCategoriesView
-from ui.views.manage_categories_select_view import ManageCategoriesSelect
-from ui.views.manage_tickets_view import ManageTicketsView
-from ui.views.manage_tickets_select_view import ManageTicketsSelect
-from ui.views.manage_type_view import ManageTypeView
-from ui.views.manage_questions_select_view import ManageQuestionsSelect
-from ui.views.manage_question_view import ManageQuestionView
 
 class ManageTickets(commands.Cog):
     def __init__(self, client: commands.Bot):

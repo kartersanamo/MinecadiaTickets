@@ -3,9 +3,6 @@ Ticket logs slash command — Components V2 browser for closed tickets.
 """
 from __future__ import annotations
 
-from discord import app_commands
-from discord.enums import SeparatorSpacing
-from discord.ext import commands
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from datetime import datetime
 import discord
@@ -13,9 +10,6 @@ import os
 import pytz
 from core.config import get_data
 from core.database import execute
-from core.decorators import task
-from core.loggers import log_commands
-from utils.embeds import get_embed_logo_url
 
 
 PAGE_SIZE = 25
@@ -148,7 +142,7 @@ def _build_page_quick_link_chunks(
 
 def _logo_files_and_thumb(cfg: dict) -> Tuple[List[discord.File], Optional[str]]:
     path = cfg.get("LOGO")
-    url = get_embed_logo_url(path)
+    url = interaction.client.app.embeds.get_logo_url(path)
     files: List[discord.File] = []
     if not url:
         return [], None
