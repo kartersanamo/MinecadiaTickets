@@ -7,6 +7,7 @@ from core.config import get_settings, get_ticket_data
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
+from services.embed_service import EmbedService
 
 
 class Questions(discord.ui.Modal):
@@ -81,7 +82,7 @@ class Questions(discord.ui.Modal):
                 ),
                 color=discord.Color.from_str(self.data["EMBED_COLOR"]),
             )
-        logo_url = interaction.client.app.embeds.get_logo_url(self.data["LOGO"])
+        logo_url = EmbedService.get_logo_url(self.data["LOGO"])
         embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
         return embed
 

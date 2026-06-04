@@ -1,5 +1,6 @@
 import discord
 
+from services.embed_service import EmbedService
 
 LOGO = "assets/Logo.png"
 
@@ -37,7 +38,7 @@ class Paginator(discord.ui.View):
                 for item in self.get_current_page_data():
                     embed.description += f"{item}\n"
         if footer_text:
-            logo_url = interaction.client.app.embeds.get_logo_url(LOGO)
+            logo_url = EmbedService.get_logo_url(LOGO)
             embed.set_footer(icon_url=logo_url, text=footer_text)
         return embed
 
