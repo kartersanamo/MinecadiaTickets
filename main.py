@@ -3,6 +3,12 @@ from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parent)
 
+import sys
+
+_minecadia_root = Path(__file__).resolve().parent.parent
+if str(_minecadia_root) not in sys.path:
+    sys.path.insert(0, str(_minecadia_root))
+
 from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
 from ui.views.tickets_view2_view import TicketsView2
@@ -15,7 +21,8 @@ import discord
 from core.app import BotApp
 from core.config import get_data
 from core.decorators import task
-from core.loggers import log_tasks
+from core.loggers import log_commands, log_tasks
+from _errors.setup import wire_bot
 
 _bots_env = (
     Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
@@ -31,9 +38,11 @@ class Client(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix = '.', intents = discord.Intents().all())
         self.data: dict = get_data()
+        wire_bot(self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks)
 
     @task("Setup Cogs")
     async def setup_cogs(self):
+        await self.load_extension("services.active_ticket_cache")
         for ext in COG_FILES:
             log_tasks.info(f"Loaded cog {ext}.py")
             await self.load_extension("cogs." + ext.lower())
@@ -80,6 +89,9 @@ class Client(commands.Bot):
 
     @task("Setup Hook")
     async def setup_hook(self):
+        from _errors.setup import wire_bot_async_setup
+
+        await wire_bot_async_setup(self, bot_name="Tickets", log_tasks=log_tasks)
         self.app = BotApp.from_bot(self)
         await self.setup_cogs()
         await self.register_analytics()
@@ -117,10 +129,6 @@ async def cog_autocomplete(_: discord.Interaction, current: str):
 @app_commands.autocomplete(cog = cog_autocomplete)
 async def ticketsreload(interaction: discord.Interaction, cog: str):
     await tickets_reload_command(interaction, cog)
-
-@ticketsreload.error
-async def ticketsreload_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
-    await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:

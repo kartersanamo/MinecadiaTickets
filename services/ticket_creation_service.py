@@ -258,6 +258,9 @@ class TicketCreationService:
         execute(
             f"INSERT INTO tickets (channelID, ownerID, type, opened_at, number, active, closed_by, closed_at, reason, name, transcript, privated) VALUES ('{channel.id}', '{interaction.user.id}', '{category.name}', '{int(time.time())}', '{number}', 'True', ' ', ' ', ' ', ' ', ' ', '{privated}')"
         )
+        from services.active_ticket_cache import active_ticket_cache
+
+        active_ticket_cache.register(channel.id, interaction.user.id)
 
         return channel
 

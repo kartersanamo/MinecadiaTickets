@@ -20,10 +20,6 @@ class ManageTickets(commands.Cog):
         await view.update_embed(interaction)
         await interaction.edit_original_response(view = view)
 
-    @manage_tickets.error
-    async def manage_tickets_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

@@ -1,6 +1,7 @@
 """Track messages in open ticket channels (staff vs owner)."""
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -13,14 +14,17 @@ if str(_ROOT) not in sys.path:
 
 from _analytics import logger as analytics  # noqa: E402
 from core.config import get_data
-from core.database import execute
+from services.active_ticket_cache import active_ticket_cache
+
+
+def _record_message(channel_id: int, *, is_staff: bool) -> None:
+    analytics.record_ticket_message(str(channel_id), is_staff=is_staff)
 
 
 class TicketAnalytics(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.data = get_data()
-        self._ticket_cache: dict[int, tuple[str, float]] = {}
 
     def _is_staff(self, member: discord.Member) -> bool:
         staff_role = self.data.get("STAFF_ROLE_ID")
@@ -34,28 +38,19 @@ class TicketAnalytics(commands.Cog):
     async def on_message(self, message: discord.Message) -> None:
         if not message.guild or message.author.bot:
             return
-        channel_id = message.channel.id
-        cached = self._ticket_cache.get(channel_id)
-        if cached and cached[1] > discord.utils.utcnow().timestamp():
-            owner_id, _ = cached
-        else:
-            rows = execute(
-                f"SELECT ownerID FROM tickets WHERE channelID = '{channel_id}' "
-                "AND active = 'True' LIMIT 1"
-            )
-            if not rows:
-                self._ticket_cache.pop(channel_id, None)
-                return
-            owner_id = str(rows[0]["ownerID"])
-            self._ticket_cache[channel_id] = (
-                owner_id,
-                discord.utils.utcnow().timestamp() + 120,
-            )
+
+        owner_id = active_ticket_cache.get_owner(message.channel.id)
+        if not owner_id:
+            return
 
         is_staff = self._is_staff(message.author)
         if str(message.author.id) == owner_id:
             is_staff = False
-        analytics.record_ticket_message(str(channel_id), is_staff=is_staff)
+
+        asyncio.create_task(
+            asyncio.to_thread(_record_message, message.channel.id, is_staff=is_staff),
+            name=f"ticket-analytics-{message.channel.id}",
+        )
 
 
 async def setup(client: commands.Bot) -> None:

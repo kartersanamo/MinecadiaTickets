@@ -94,10 +94,6 @@ class Blacklist(commands.Cog):
             await self.send_embed(interaction, user, "blacklisted")
             await self.send_webhook(interaction, user, length, reason)
 
-    @blacklist.error
-    async def blacklist_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral=True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

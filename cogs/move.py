@@ -89,10 +89,6 @@ class Move(commands.Cog):
             await self.set_permissions(interaction, category.id)
             await self.send_embed(interaction, category.name)
 
-    @move.error
-    async def move_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

@@ -92,15 +92,6 @@ class Private(commands.Cog):
         await self.update_permissions(interaction.channel, interaction.guild, interaction.channel.overwrites.items(), interaction.guild.default_role)
         await self.send_embed(interaction, "has made this channel for management.")
 
-    @private.error
-    async def private_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
-    
-    @management.error
-    async def management_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 async def setup(client: commands.Bot) -> None:
     await client.add_cog(Private(client))

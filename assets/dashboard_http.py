@@ -1,9 +1,14 @@
 """Local HTTP API for dashboard actions (close ticket, etc.)."""
 from __future__ import annotations
 
-
 import logging
 import os
+import sys
+from pathlib import Path
+
+_minecadia_root = Path(__file__).resolve().parent.parent.parent
+if str(_minecadia_root) not in sys.path:
+    sys.path.insert(0, str(_minecadia_root))
 from typing import TYPE_CHECKING
 import discord
 
@@ -95,7 +100,9 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             )
         except Exception as exc:
             log.exception("Dashboard close failed for %s", channel_id)
-            return web.json_response({"error": str(exc)}, status=500)
+            from _errors.messages import user_message_for
+
+            return web.json_response({"error": user_message_for(exc)}, status=500)
 
         return web.json_response({"ok": True})
 
@@ -283,7 +290,9 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             return web.json_response({"error": "Unknown ticket command"}, status=400)
         except Exception as exc:
             log.exception("Dashboard ticket-command failed for %s/%s", channel_id, command)
-            return web.json_response({"error": str(exc)}, status=500)
+            from _errors.messages import user_message_for
+
+            return web.json_response({"error": user_message_for(exc)}, status=500)
 
     app = web.Application()
     app.router.add_post("/close-ticket", close_ticket)

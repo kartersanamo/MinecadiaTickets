@@ -218,6 +218,9 @@ class Close(commands.Cog):
         execute(
             f"UPDATE statistics SET tickets_closed = '{new_ticket_closed_stat}' WHERE user_ID = '{closed_by_id}'"
         )
+        from services.active_ticket_cache import active_ticket_cache
+
+        active_ticket_cache.unregister(channel_id)
         if analytics:
             analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 
@@ -339,10 +342,6 @@ class Close(commands.Cog):
             f"Closed #{name} ({channel_id}) in {str(round((time.perf_counter() - start), 2))}s by {closed_by} ({closed_by_id}) {ticket_count}"
         )
 
-    @close.error
-    async def close_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

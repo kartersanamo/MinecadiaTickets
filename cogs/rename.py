@@ -41,18 +41,6 @@ class Rename(commands.Cog):
         await interaction.channel.edit(name = name)
         await self.send_embed(interaction, old_name)
 
-    @rename.error
-    async def rename_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        error = error.original
-        if isinstance(error, asyncio.TimeoutError):
-            error = f"`❌` Failed! You are trying to change the ticket name too quickly!"
-            log_commands.warning(f"{interaction.user} ({interaction.user.id}) is trying to change the ticket name too quickly {error}")
-        elif isinstance(error, discord.HTTPException):
-            error = f"`❌` Try something else! Discord does not allow that channel name."
-            log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to change the ticket name to a disallowed name {error}")
-        else:
-            log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

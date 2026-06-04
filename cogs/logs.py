@@ -1,7 +1,7 @@
 from discord.ext import commands, tasks
 import discord
 from core.config import get_data
-from core.database import execute
+from core.database import aexecute
 from core.decorators import task
 from core.loggers import log_commands
 
@@ -18,8 +18,10 @@ class Logs(commands.Cog):
 
     @task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets WHERE active = 'True'")
-        return int(row[0]['COUNT(*)'])
+        row = await aexecute("SELECT COUNT(*) AS n FROM tickets WHERE active = %s", ("True",))
+        if not row:
+            return 0
+        return int(row[0].get("n") or row[0].get("COUNT(*)") or 0)
 
     @task("Update Ticket VC Count")
     async def update_ticket_vc_count(self) -> None:

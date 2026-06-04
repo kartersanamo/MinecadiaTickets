@@ -66,10 +66,6 @@ class TicketCount(commands.Cog):
 
         await interaction.response.send_message(embeds = embed_list)
 
-    @ticketcount.error
-    async def ticketcount_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client:commands.Bot) -> None:

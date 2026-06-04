@@ -55,10 +55,6 @@ class BlacklistList(commands.Cog):
         blacklist_data: list = await self.get_blacklist_data(interaction, rows)
         await self.send_paginator(interaction, blacklist_data)
 
-    @blacklistlist.error
-    async def blacklistlist_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

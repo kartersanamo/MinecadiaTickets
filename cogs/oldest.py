@@ -29,8 +29,12 @@ class Oldest(commands.Cog):
                 bad_channels.append(row['channelID'])
         
         if bad_channels:
+            from services.active_ticket_cache import active_ticket_cache
+
             bad_channels_str = ', '.join(f"'{channelID}'" for channelID in bad_channels)
             execute(f"UPDATE tickets SET active = 'False' WHERE channelID IN ({bad_channels_str})")
+            for channel_id in bad_channels:
+                active_ticket_cache.unregister(int(channel_id))
             log_tasks.warning(f"{len(bad_channels)} invalid channel IDs found and removed from the database {bad_channels}")
 
         if not data:
@@ -61,10 +65,6 @@ class Oldest(commands.Cog):
         data: list[str] = await self.get_data_list(interaction)
         await self.send_paginator(interaction, data, category)
 
-    @oldest.error
-    async def oldest_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        await interaction.followup.send(content = error, ephemeral = True) if interaction.response.is_done() else await interaction.response.send_message(content = error, ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

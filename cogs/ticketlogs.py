@@ -269,13 +269,6 @@ class TicketLogs(commands.Cog):
     async def ticketlogs(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await self.ticket_logs_command(interaction, user)
 
-    @ticketlogs.error
-    async def ticketlogs_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
-        log_commands.error(f"/{interaction.command.name} error {error}")
-        if interaction.response.is_done():
-            await interaction.followup.send(content = str(error), ephemeral = True)
-        else:
-            await interaction.response.send_message(content = str(error), ephemeral = True)
 
 
 async def setup(client: commands.Bot) -> None:

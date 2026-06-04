@@ -98,13 +98,13 @@ class ManageTypeView(discord.ui.View):
                         try:
                             if not interaction.guild.get_role(int(role)):
                                 return False
-                        except:
+                        except Exception:
                             return False
                 if value == "Category":
                     try:
                         if not interaction.guild.get_channel(int(m.content)):
                             return False
-                    except:
+                    except Exception:
                         return False
                 if m.channel == interaction.channel and m.author == interaction.user:
                     return True
