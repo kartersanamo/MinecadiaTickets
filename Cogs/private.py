@@ -13,66 +13,18 @@ class Private(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(name = "private", description = "Privates the ticket channel so that only Admins can view it")
     async def private(self, interaction: discord.Interaction) -> None:
-        """
-        This function is a Discord interaction command that makes a ticket channel private.
-        Only users with the ticket role can use this command.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-            This object contains information about the user, guild, and channel where the command was invoked.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await self.private_command(interaction)
 
     @task("Change Category", False)
     async def change_category(self, channel: discord.TextChannel, category: discord.CategoryChannel) -> None:
-        """
-        This function is an asynchronous task that changes the category of a given text channel.
-
-        Parameters:
-        channel (discord.TextChannel): The text channel whose category needs to be updated.
-        category (discord.CategoryChannel): The new category to which the text channel should be moved.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await channel.edit(category = category)
 
     @task("Update Database", False)
     async def update_database(self, channel_id: int, privated_str: str) -> None:
-        """
-        This function is an asynchronous task that updates the 'privated' column in the 'tickets' table of the database.
-        It sets the 'privated' column value to the provided 'privated_str' for the ticket channel identified by 'channel_id'.
-
-        Parameters:
-        channel_id (int): The unique identifier of the ticket channel in the database.
-        privated_str (str): The new value to be set for the 'privated' column in the database.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         execute(f"UPDATE tickets SET privated = '{privated_str}' WHERE channelID = '{channel_id}'")
 
     @task("Update Permissions", False)
     async def update_permissions(self, channel: discord.TextChannel, guild: discord.Guild, permissions, default_role: discord.Role) -> None:
-        """
-        This function is an asynchronous task that updates the permissions of a given text channel.
-        It sets the permissions for each key-value pair in the 'permissions' dictionary.
-        If the key is a discord.Member or the default_role, it sets the overwrite permissions for that key.
-        Additionally, it removes the view_channel permission for the staff_team role.
-
-        Parameters:
-        channel (discord.TextChannel): The text channel whose permissions need to be updated.
-        guild (discord.Guild): The guild in which the text channel resides.
-        permissions (dict): A dictionary containing the keys (discord.Member or discord.Role) and values (discord.PermissionOverwrite)
-            representing the permissions to be set for each key.
-        default_role (discord.Role): The default role for the guild.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await channel.edit(sync_permissions = True)
         for key, value in permissions:
             if isinstance(key, discord.Member) or key == default_role:
@@ -82,17 +34,6 @@ class Private(commands.Cog):
 
     @task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, description: str) -> None:
-        """
-        This function is an asynchronous task that sends an embed message to the interaction response.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-            This object contains information about the user, guild, and channel where the command was invoked.
-        description (str): The description text to be included in the embed message.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         embed = discord.Embed(
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = f"{interaction.user.mention} {description}"
@@ -104,17 +45,6 @@ class Private(commands.Cog):
 
     @task("Private Command", True)
     async def private_command(self, interaction: discord.Interaction) -> None:
-        """
-        This function is an asynchronous task that handles the private command for ticket channels.
-        It changes the category of the ticket channel, updates the database, sets permissions, and sends an embed message.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-            This object contains information about the user, guild, and channel where the command was invoked.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await interaction.response.defer()
         category: discord.CategoryChannel = interaction.guild.get_channel(self.data['CHANNEL_IDS']['ADMIN+_CHECK_ID'])
         
@@ -137,32 +67,10 @@ class Private(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(name = "management", description = "Privates the channel so that only Management can view it")
     async def management(self, interaction: discord.Interaction) -> None:
-        """
-        This function is a Discord interaction command that makes a ticket channel private for Management only.
-        Only users with the ticket role can use this command.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-            This object contains information about the user, guild, and channel where the command was invoked.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await self.management_command(interaction)
 
     @task("Management Command", True)
     async def management_command(self, interaction: discord.Interaction) -> None:
-        """
-        This function is an asynchronous task that handles the management command for ticket channels.
-        It changes the category of the ticket channel, updates the database, sets permissions, and sends an embed message.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-            This object contains information about the user, guild, and channel where the command was invoked.
-
-        Returns:
-        None: This function does not return any value. It is an asynchronous function that performs an action.
-        """
         await interaction.response.defer()
         category: discord.CategoryChannel = interaction.guild.get_channel(self.data['CHANNEL_IDS']['MANAGEMENT_CONTACT_ID'])
         

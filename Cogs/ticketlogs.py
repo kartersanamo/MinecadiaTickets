@@ -31,7 +31,6 @@ def _safe_int_ts(raw: Any) -> Optional[int]:
 
 
 def _staff_privacy(interaction: discord.Interaction, row: Dict[str, Any]) -> Tuple[bool, bool]:
-    """(show_transcript, show_reason)."""
     cfg = get_data()
     star = interaction.guild.get_role(cfg["ROLE_IDS"]["ADMINISTRATOR_PERMS_ROLE_ID"])
     if star is not None and star in interaction.user.roles:
@@ -120,10 +119,6 @@ def _build_page_quick_link_chunks(
     page_count: int,
     cfg: dict,
 ) -> List[str]:
-    """
-    Markdown blocks for TextDisplay(s): same quick transcript links as the old embed,
-    but usable inside Components V2 (Discord forbids ``embeds`` with ``IS_COMPONENTS_V2``).
-    """
     lines: List[str] = []
     base = state.page * PAGE_SIZE
     for i, row in enumerate(slice_rows):
@@ -175,7 +170,6 @@ def _ordinal_day(n: int) -> str:
 
 
 def _format_select_option_date(ts: int) -> str:
-    """Plain text for SelectOption.description — Discord does not render <t:…> there."""
     try:
         dt = datetime.fromtimestamp(int(ts), tz = pytz.UTC).astimezone(pytz.timezone("US/Eastern"))
     except (TypeError, ValueError, OSError):

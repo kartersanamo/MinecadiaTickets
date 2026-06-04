@@ -257,9 +257,6 @@ class TicketSystem:
     async def has_ticket_cooldown_bypass(
         self, interaction: discord.Interaction
     ) -> bool:
-        """
-        Staff Team + '*' (administrator perms) role bypasses ticket open cooldown checks.
-        """
         role_ids = self.data.get("ROLE_IDS", {})
         bypass_ids = {
             int(role_ids.get("STAFF_TEAM_ROLE_ID", 0)),
@@ -278,10 +275,6 @@ class TicketSystem:
         ticket_type: str,
         owner_id: int,
     ) -> None:
-        """
-        Notify the dashboard about a newly created ticket.
-        Uses the shared bot API secret as auth when configured.
-        """
         base_url = os.getenv("DASHBOARD_URL", "https://bots.kartersanamo.com").rstrip("/")
         endpoint = (
             os.getenv("DASHBOARD_TICKET_NOTIFY_URL", "").strip()

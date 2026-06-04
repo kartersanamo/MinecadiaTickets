@@ -17,19 +17,6 @@ class ActiveTickets(commands.Cog):
 
     @task("Check User Messages", False)
     async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
-        """
-        This function checks if a user has sent any messages in a specific ticket channel.
-        If the user has sent a message, the channel's mention and category name are appended to the tickets list.
-        The function uses a cache to avoid unnecessary API calls and improve performance.
-
-        Parameters:
-        - user_id (int): The ID of the user to check.
-        - channel (discord.TextChannel): The text channel to check.
-        - tickets (list): A list to store the tickets.
-
-        Returns:
-        - None: The function does not return anything. It modifies the tickets list directly.
-        """
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
             if self.cache[cache_key]:
@@ -50,17 +37,6 @@ class ActiveTickets(commands.Cog):
 
     @task("Get Tickets", True)
     async def get_tickets_list(self, interaction: discord.Interaction) -> List[Tuple[str, str]]:
-        """
-        This function retrieves a list of tickets that the user is actively speaking in.
-        It iterates through the specified ticket categories, checks each ticket channel for new messages,
-        and appends the ticket's mention and category name to the tickets list if the user has sent a message.
-
-        Parameters:
-        - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
-
-        Returns:
-        - tickets (list): A list of (channel mention, category name) tuples.
-        """
         tickets: List[Tuple[str, str]] = []
         for category_id in self.data["TICKET_CATEGORIES"]:
             category = interaction.guild.get_channel(category_id)
@@ -164,9 +140,6 @@ class ActiveTickets(commands.Cog):
 
     @task("Send Components V2 response", False)
     async def send_active_tickets_response(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> None:
-        """
-        Sends the active-tickets result using Components V2 (LayoutView).
-        """
         view, logo_files = self._build_active_tickets_layout(interaction, tickets)
         edit_kw: dict = {"content": None, "embed": None, "view": view}
         if logo_files:
@@ -176,31 +149,10 @@ class ActiveTickets(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(name="active-tickets", description="Returns which tickets you are actively speaking in")
     async def activetickets(self, interaction: discord.Interaction) -> None:
-        """
-        This function is a Discord slash command that retrieves and displays the tickets
-        where the user is actively speaking in. It uses the `activetickets_command` method
-        to perform the actual logic.
-
-        Parameters:
-        - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
-
-        Returns:
-        - None: The function does not return anything. It sends a Discord message using the interaction object.
-        """
         await self.activetickets_command(interaction)
 
     @task("ActiveTickets Command", True)
     async def activetickets_command(self, interaction: discord.Interaction) -> None:
-        """
-        This function is responsible for handling the execution of the 'activetickets' command in a Discord bot.
-        It defers the response, retrieves a list of active tickets for the user, and sends a Components V2 layout.
-
-        Parameters:
-        - interaction (discord.Interaction): The Discord interaction object representing the command invocation.
-
-        Returns:
-        - None: The function does not return anything. It sends a Discord message using the interaction object.
-        """
         await interaction.response.defer()
         tickets: List[Tuple[str, str]] = await self.get_tickets_list(interaction)
         await self.send_active_tickets_response(interaction, tickets)

@@ -24,16 +24,6 @@ class Close(commands.Cog):
         self.data: dict = get_data()
 
     def convert_to_est(self, timestamp: str) -> str:
-        """
-        Converts a given timestamp from UTC unix to Eastern Standard Time (EST) in a readable format.
-
-        Parameters:
-        timestamp (str): The timestamp to be converted. It should be a string representation of a float or integer.
-
-        Returns:
-        str: The converted timestamp in the format "Day, Month DD, YYYY, HH:MM AM/PM EST".
-            If an error occurs during the conversion, it logs the error and returns an empty string.
-        """
         try:
             est_time = datetime.datetime.fromtimestamp(int(float(timestamp)), tz = pytz.utc).astimezone(pytz.timezone('US/Eastern'))
             return est_time.strftime('%a, %b %d, %Y, %I:%M:%S %p') + " EST"
@@ -43,16 +33,6 @@ class Close(commands.Cog):
 
     @task("Get Transcript Link")
     async def return_link(self, content) -> str:
-        """
-        Sends a POST request to the paste.md-5.net API to create a new document with the given content.
-        The function returns the URL of the created document.
-
-        Parameters:
-        content (str): The content to be sent to the paste.md-5.net API.
-
-        Returns:
-        str: The URL of the created document.
-        """
         url: str = 'https://paste.minecadia.com/documents'
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -79,32 +59,10 @@ class Close(commands.Cog):
 
     @task("Fetch All Messages")
     async def fetch_all_messages(self, channel: discord.TextChannel) -> list[discord.Message]:
-        """
-        Fetches all messages from a given Discord text channel, including past messages. 
-        This method is here to ensure that all messages are gathered FIRST, and then added to the transcript.
-        If the messages are not grabbed first, then not all messages will be interated over in the case of a 
-        ticket with a lot of messages, leading to transcripts being cut off.
-
-        Parameters:
-        channel (discord.TextChannel): The Discord text channel from which to fetch messages.
-
-        Returns:
-        list[discord.Message]: A list of all messages in the given channel, sorted by their creation time in ascending order.
-        """
         return [message async for message in channel.history(limit = None, oldest_first = True)]
 
     @task("Format Embed")
     async def format_embed_content(self, embed: discord.Embed) -> str:
-        """
-        This function formats an embed into a string that can be used to create a transcript.
-        It extracts the title, description, fields, and footer from the embed and formats them into a table-like structure.
-
-        Parameters:
-        embed (discord.Embed): The embed to be formatted.
-
-        Returns:
-        str: The formatted string representing the embed.
-        """
         message_content = ""
         lengths = []
         dictionary = embed.to_dict()
@@ -158,25 +116,6 @@ class Close(commands.Cog):
 
     @task("Generate Transcript Content")
     async def generate_transcript_content(self, messages: list[discord.Message], opened_string: str, ticket_type: str, ticket_number: str, owner: discord.Member, owner_id: int, reason: str, closed_by: discord.Member, channel_id: int, closed_at_string: str, closed_by_id: int) -> str:
-        """
-        This function generates a transcript content string from a list of Discord messages.
-
-        Parameters:
-        messages (list[discord.Message]): A list of Discord messages to be included in the transcript.
-        opened_string (str): The opened timestamp in a readable format.
-        ticket_type (str): The type of the ticket.
-        ticket_number (str): The ticket number.
-        owner (discord.Member): The owner of the ticket.
-        owner_id (int): The ID of the owner of the ticket.
-        reason (str): The reason for closing the ticket.
-        closed_by (discord.Member): The member who closed the ticket.
-        channel_id (int): The ID of the Discord channel.
-        closed_at_string (str): The closed timestamp in a readable format.
-        closed_by_id (int): The ID of the member who closed the ticket.
-
-        Returns:
-        str: The generated transcript content.
-        """
         content: str = f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
         for message in messages:
             try:
@@ -199,23 +138,6 @@ class Close(commands.Cog):
 
     @task("Get Ticketlog Embed")
     async def get_ticket_log(self, reason: str, opened_timestamp: int, ticket_number: str, owner_mention: str, owner: discord.Member, link: str, ticket_type: str, closed_at_timestamp: int, closed_by: discord.Member) -> discord.Embed:
-        """
-        This function generates a Discord embed for a ticket log.
-
-        Parameters:
-        reason (str): The reason for closing the ticket.
-        opened_timestamp (int): The timestamp of when the ticket was opened.
-        ticket_number (str): The ticket number.
-        owner_mention (str): The mention of the owner of the ticket.
-        owner_id (int): The ID of the owner of the ticket.
-        link (str): The link to the ticket transcript.
-        ticket_type (str): The type of the ticket.
-        closed_at_timestamp (int): The timestamp of when the ticket was closed.
-        closed_by (discord.Member): The member who closed the ticket.
-
-        Returns:
-        discord.Embed: A Discord embed containing the ticket log information.
-        """
         delta = "N/A"
         if opened_timestamp != "N/A":
             seconds = closed_at_timestamp - opened_timestamp
@@ -297,17 +219,6 @@ class Close(commands.Cog):
 
     @task("Fetch Ticket Info")
     async def fetch_ticket_info(self, channelID: int) -> tuple:
-        """
-        Fetches ticket information from the database based on the channel ID.
-
-        Parameters:
-        channelID (int): The ID of the Discord channel.
-
-        Returns:
-        tuple: A tuple containing the owner of the ticket, their ID, their mention, 
-        the opened timestamp, the opened timestamp in a readable format, the ticket number, 
-        the ticket type, the ticket privacy status, the closed timestamp, and the closed timestamp in a readable format.
-        """
         bot_account: discord.ClientUser = self.client.user
         info = (bot_account, bot_account.id, bot_account.mention, 0, "N/A", "0000", "Unknown", "", 0, "")
         row = execute(f"SELECT number, opened_at, privated, type, ownerID FROM tickets WHERE channelID = '{channelID}'")
@@ -329,15 +240,6 @@ class Close(commands.Cog):
 
     @task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        """
-        This function retrieves the count of active tickets from the database.
-
-        Parameters:
-        None
-
-        Returns:
-        int: The count of active tickets.
-        """
         row = execute("SELECT COUNT(*) FROM tickets WHERE active = 'True'")
         return int(row[0]['COUNT(*)'])
 
@@ -347,16 +249,6 @@ class Close(commands.Cog):
     @app_commands.command(name = "close", description = "Closes the ticket channel")
     @app_commands.describe(reason = "The reason for closing the ticket")
     async def close(self, interaction: discord.Interaction, reason: str) -> None:
-        """
-        Closes the ticket channel.
-
-        Parameters:
-        interaction (discord.Interaction): The interaction object representing the command invocation.
-        reason (str): The reason for closing the ticket.
-
-        Returns:
-        None
-        """
         await self.close_command(interaction, reason)
 
     @task("Close Command", False)
@@ -379,7 +271,6 @@ class Close(commands.Cog):
         closed_by: discord.Member,
         reason: str,
     ) -> None:
-        """Full /close flow — used by slash command and dashboard API."""
         start = time.perf_counter()
         messages = await self.fetch_all_messages(channel)
         channel_id = channel.id

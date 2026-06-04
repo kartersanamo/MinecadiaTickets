@@ -11,58 +11,16 @@ class TicketCount(commands.Cog):
 
     @task("Get Active List", False)
     async def get_active_list(self) -> list[dict]:
-        """
-        Retrieves a list of ticket types and their respective counts from the database,
-        specifically for active tickets.
-
-        Parameters:
-        self (TicketCount): An instance of the TicketCount class.
-
-        Returns:
-        list[dict]: A list of dictionaries, where each dictionary contains 'type' and 'count' keys.
-                    The 'type' key represents the ticket type, and the 'count' key represents the number
-                    of active tickets of that type. The list is sorted in descending order based on the count.
-        """
         rows = execute("SELECT type, COUNT(*) as count FROM tickets WHERE active = 'True' GROUP BY type ORDER BY count DESC")
         return rows
 
     @task("Get Total List", False)
     async def get_total_list(self) -> list[dict]:
-        """
-        Retrieves a list of ticket types and their respective counts from the database.
-        This gets all tickets, regardless of their active status.
-
-        Parameters:
-        self (TicketCount): An instance of the TicketCount class.
-
-        Returns:
-        list[dict]: A list of dictionaries, where each dictionary contains 'type' and 'count' keys.
-                    The 'type' key represents the ticket type, and the 'count' key represents the number
-                    of tickets of that type. The list is sorted in descending order based on the count.
-        """
         rows = execute("SELECT type, COUNT(*) as count FROM tickets GROUP BY type ORDER BY count DESC")
         return rows
 
     @task("Get Debug Embeds", False)
     async def get_debug_embeds(self, active_list: list[dict], active_count: int, total_list: list[dict], total_count: int) -> list[discord.Embed]:
-        """
-        Generates a list of two Discord embeds, one for active tickets and another for total ticket history.
-
-        Parameters:
-        self (TicketCount): An instance of the TicketCount class.
-        active_list (list[dict]): A list of dictionaries, where each dictionary contains 'type' and 'count' keys.
-                                The 'type' key represents the ticket type, and the 'count' key represents the number
-                                of active tickets of that type. The list is sorted in descending order based on the count.
-        active_count (int): The total number of active tickets.
-        total_list (list[dict]): A list of dictionaries, where each dictionary contains 'type' and 'count' keys.
-                                The 'type' key represents the ticket type, and the 'count' key represents the number
-                                of tickets of that type. The list is sorted in descending order based on the count.
-        total_count (int): The total number of tickets.
-
-        Returns:
-        list[discord.Embed]: A list containing two Discord embeds. The first embed represents active tickets,
-                            and the second embed represents total ticket history.
-        """
         active_embed = discord.Embed(
                 title = "Active Tickets By Category",
                 description = "\n".join(f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} ({round(row.get('count', 0) / active_count * 100, 2)}%)" for row in active_list),
@@ -80,34 +38,10 @@ class TicketCount(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(name = "ticket-count", description = "Sends the number of currently opened tickets")
     async def ticketcount(self, interaction: discord.Interaction, debug: Literal['Yes'] = None):
-        """
-        This function is a Discord slash command that sends the number of currently opened tickets.
-        It can also provide a debug mode that provides more detailed information about the ticket types.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this command.
-        debug (Literal['Yes'], optional): If provided with the value 'Yes', the function will provide a debug mode.
-                                        Defaults to None.
-
-        Returns:
-        None: This function is asynchronous and does not return any value. It sends a message to the Discord interaction.
-        """
         await self.ticket_count_command(interaction, debug)
 
     @task("Ticket Count Command", True)
     async def ticket_count_command(self, interaction: discord.Interaction, debug: str) -> None:
-        """
-        This function is responsible for handling the ticket count command.
-        It retrieves the count of active and total tickets, and generates appropriate embeds based on the debug mode.
-
-        Parameters:
-        self (TicketCount): An instance of the TicketCount class.
-        interaction (discord.Interaction): The Discord interaction object that triggered this command.
-        debug (str): A string indicating whether debug mode is enabled. If not provided or set to 'None', debug mode is disabled.
-
-        Returns:
-        None: This function is asynchronous and does not return any value. It sends a message to the Discord interaction.
-        """
         active_list: list[dict] = await self.get_active_list()
         active_count: int = sum(row.get('count', 0) for row in active_list)
 

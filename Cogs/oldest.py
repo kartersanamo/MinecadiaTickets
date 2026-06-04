@@ -12,17 +12,6 @@ class Oldest(commands.Cog):
 
     @task("Get Data", False)
     async def get_data_list(self, interaction: discord.Interaction, category: discord.CategoryChannel = None) -> list[str]:
-        """
-        Retrieves a list of oldest ticket channels from the database.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-        category (discord.CategoryChannel, optional): The category of tickets to retrieve. Defaults to None.
-
-        Returns:
-        list[str]: A list of oldest ticket channels in the format "{channel.mention} <t:{timestamp}:R>".
-        If no data is found, returns a list containing "No data found."
-        """
         data: list = []
         bad_channels: list = []
         rows = execute("SELECT channelID, opened_at FROM tickets WHERE active = 'True' ORDER BY opened_at")
@@ -49,17 +38,6 @@ class Oldest(commands.Cog):
     
     @task("Send Paginator", False)
     async def send_paginator(self, interaction: discord.Interaction, data: list[str], category: discord.CategoryChannel = None) -> None:
-        """
-        Sends a paginated message containing the oldest ticket channels.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-        data (list[str]): A list of oldest ticket channels in the format "{channel.mention} <t:{timestamp}:R>".
-        category (discord.CategoryChannel, optional): The category of tickets to display. Defaults to None.
-
-        Returns:
-        None: This function is an asynchronous coroutine and does not return a value.
-        """
         paginate = Paginator()
         paginate.title = f"Oldest Tickets in {category.name}" if category else "Oldest Tickets"
         paginate.sep = 15
@@ -72,34 +50,10 @@ class Oldest(commands.Cog):
     @app_commands.command(name = "oldest", description = "Displays the oldest tickets that are currently open")
     @app_commands.describe(category = "The category of tickets to display")
     async def oldest(self, interaction: discord.Interaction, category: discord.CategoryChannel = None) -> None:
-        """
-        Displays the oldest tickets that are currently open in a Discord server.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-        category (discord.CategoryChannel, optional): The category of tickets to display. Defaults to None.
-
-        Returns:
-        None: This function is an asynchronous coroutine and does not return a value. It sends a deferred response,
-        then calls the `oldest_command` method with the provided parameters.
-        """
         await self.oldest_command(interaction, category)
     
     @task("Oldest Command", True)
     async def oldest_command(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
-        """
-        Executes the oldest ticket command in a Discord server.
-
-        This function sends a deferred response, retrieves a list of oldest ticket channels from the database,
-        and sends a paginated message containing the oldest ticket channels.
-
-        Parameters:
-        interaction (discord.Interaction): The Discord interaction object that triggered this function.
-        category (discord.CategoryChannel): The category of tickets to display.
-
-        Returns:
-        None: This function is an asynchronous coroutine and does not return a value.
-        """
         await interaction.response.defer()
         data: list[str] = await self.get_data_list(interaction)
         await self.send_paginator(interaction, data, category)

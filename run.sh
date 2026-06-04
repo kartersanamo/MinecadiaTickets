@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
 cd "$(dirname "$0")"
-if [ -x .venv/bin/python ]; then
-  PY=.venv/bin/python
-elif [ -x venv/bin/python ]; then
-  PY=venv/bin/python
-else
-  PY=python3
+
+if [ -x ".venv/bin/python" ]; then
+    exec "./.venv/bin/python" main.py
+else 
+    exec python3 main.py
 fi
-while true; do
-  "$PY" main.py
-  sleep 5
-done
