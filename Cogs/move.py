@@ -1,8 +1,13 @@
-from Assets.functions import get_data, is_ticket, execute, log_commands, task
 from discord.ext import commands
 from discord import app_commands
 import discord
 import asyncio
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands
+from domain.checks import is_ticket
+from utils.embeds import get_embed_logo_url
 
 
 class Move(commands.Cog):
@@ -63,7 +68,6 @@ class Move(commands.Cog):
             description = f"{interaction.user.mention} has moved this ticket to **{category_name}**", 
             color = discord.Color.from_str(self.data["EMBED_COLOR"])
         )
-        from Assets.functions import get_embed_logo_url
         logo_url = get_embed_logo_url(self.data["LOGO"])
         confirmation_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url) 
         await interaction.edit_original_response(embed = confirmation_embed)

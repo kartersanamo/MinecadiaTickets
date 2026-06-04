@@ -1,8 +1,13 @@
-from Assets.functions import get_data, is_ticket, execute, log_commands, log_tasks, task
 from discord.ext import commands
 from discord import app_commands
 import discord
 import asyncio
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands, log_tasks
+from domain.checks import is_ticket
+from utils.embeds import get_embed_logo_url
 
 class Private(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -38,7 +43,6 @@ class Private(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = f"{interaction.user.mention} {description}"
         )
-        from Assets.functions import get_embed_logo_url
         logo_url = get_embed_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data['FOOTER'], icon_url = logo_url)
         await interaction.followup.send(embed = embed, file = discord.File("Assets/Logo.png"))

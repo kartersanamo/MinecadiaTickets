@@ -1,6 +1,9 @@
-from Assets.functions import log_commands, get_data, execute, task
 from discord.ext import commands, tasks
 import discord
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands
 
 
 class Logs(commands.Cog):

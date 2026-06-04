@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import discord
 
 from aiohttp import web
-from Assets.functions import execute
+from core.database import execute
 
 if TYPE_CHECKING:
     from discord.ext import commands

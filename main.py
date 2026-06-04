@@ -4,13 +4,15 @@ from pathlib import Path
 os.chdir(Path(__file__).resolve().parent)
 
 from Cogs.sendtickets import TicketsView, TicketsView2, TicketLogs
-from Assets.functions import get_data, task, log_tasks
 from Assets.dashboard_http import start_dashboard_http
 
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
 import discord
+from core.config import get_data
+from core.decorators import task
+from core.loggers import log_tasks
 
 _bots_env = (
     Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"

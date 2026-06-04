@@ -1,4 +1,3 @@
-from Assets.functions import get_data, execute, log_commands, task, log_tasks
 from discord.ext import commands, tasks
 from discord import app_commands
 from discord import Webhook
@@ -7,6 +6,11 @@ import datetime
 import aiohttp
 import discord
 import time
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands, log_tasks
+from utils.embeds import get_embed_logo_url
 
 class Blacklist(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -58,7 +62,6 @@ class Blacklist(commands.Cog):
         embed = discord.Embed(
             description = f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
             color = discord.Color.from_str(self.data['EMBED_COLOR']))
-        from Assets.functions import get_embed_logo_url
         logo_url = get_embed_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("Assets/Logo.png"))

@@ -1,4 +1,3 @@
-from Assets.functions import get_data, log_tasks, log_commands, task, get_embed_logo_url
 from discord import app_commands
 from discord.enums import SeparatorSpacing
 from discord.ext import commands
@@ -7,6 +6,10 @@ import cachetools
 import discord
 import asyncio
 import os
+from core.config import get_data
+from core.decorators import task
+from core.loggers import log_commands, log_tasks
+from utils.embeds import get_embed_logo_url
 
 
 class ActiveTickets(commands.Cog):

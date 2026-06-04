@@ -12,7 +12,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from _analytics import logger as analytics  # noqa: E402
-from Assets.functions import execute, get_data  # noqa: E402
+from core.config import get_data
+from core.database import execute
 
 
 class TicketAnalytics(commands.Cog):

@@ -1,4 +1,3 @@
-from Assets.functions import seconds_to_format, is_found, get_data, is_ticket, execute, task, log_commands, log_tasks
 from discord.ext import commands
 import sys
 from pathlib import Path
@@ -17,6 +16,14 @@ import discord
 import asyncio
 import time
 import pytz
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands, log_tasks
+from domain.checks import is_ticket
+from domain.statistics import is_found
+from utils.embeds import get_embed_logo_url
+from utils.time import seconds_to_format
 
 class Close(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -148,7 +155,6 @@ class Close(commands.Cog):
             color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
             description = desc
         )
-        from Assets.functions import get_embed_logo_url
         logo_url = get_embed_logo_url(self.data["LOGO"])
         embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
 

@@ -3,7 +3,6 @@ Ticket logs slash command — Components V2 browser for closed tickets.
 """
 from __future__ import annotations
 
-from Assets.functions import get_data, execute, log_commands, task, get_embed_logo_url
 from discord import app_commands
 from discord.enums import SeparatorSpacing
 from discord.ext import commands
@@ -12,6 +11,11 @@ from datetime import datetime
 import discord
 import os
 import pytz
+from core.config import get_data
+from core.database import execute
+from core.decorators import task
+from core.loggers import log_commands
+from utils.embeds import get_embed_logo_url
 
 
 PAGE_SIZE = 25

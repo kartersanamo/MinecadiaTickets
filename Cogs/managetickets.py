@@ -1,9 +1,10 @@
 #from Cogs.sendtickets import send_tickets_command
-from Assets.functions import get_data, log_commands
 from discord.ext import commands
 from discord import app_commands
 import discord
 import json
+from core.config import get_data
+from core.loggers import log_commands
 
 ################################################################
 #                                                              #
