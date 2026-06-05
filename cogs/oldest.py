@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
@@ -11,8 +11,6 @@ from ui.views.paginator import Paginator
 class Oldest(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @task("Get Data", False)
     async def get_data_list(self, interaction: discord.Interaction, category: discord.CategoryChannel = None) -> list[str]:
         data: list = []

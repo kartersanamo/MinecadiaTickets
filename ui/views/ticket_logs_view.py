@@ -1,5 +1,5 @@
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
@@ -9,8 +9,6 @@ from ui.views.paginator import Paginator
 class TicketLogs(discord.ui.View):
     def __init__(self) -> None:
         super().__init__(timeout=None)
-        self.data: dict = get_data()
-
     @discord.ui.button(emoji = "📨", style = discord.ButtonStyle.grey, custom_id = "request_tickets_button")
     async def request(self, interaction: discord.Interaction, Button: discord.ui.Button):
         await self.request_tickets(interaction, Button)

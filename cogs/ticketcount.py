@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import Literal
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
@@ -10,8 +10,6 @@ from core.loggers import log_commands
 class TicketCount(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @task("Get Active List", False)
     async def get_active_list(self) -> list[dict]:
         rows = execute("SELECT type, COUNT(*) as count FROM tickets WHERE active = 'True' GROUP BY type ORDER BY count DESC")
@@ -27,13 +25,13 @@ class TicketCount(commands.Cog):
         active_embed = discord.Embed(
                 title = "Active Tickets By Category",
                 description = "\n".join(f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} ({round(row.get('count', 0) / active_count * 100, 2)}%)" for row in active_list),
-                color = discord.Color.from_str(self.data["EMBED_COLOR"])
+                color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         )
         active_embed.set_footer(text=f"There are {active_count:,} tickets open!")
         history_embed = discord.Embed(
             title = "Total Ticket History",
             description = "\n".join(f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} ({round(row.get('count', 0) / total_count * 100, 2)}%)" for row in total_list),
-            color = discord.Color.from_str(self.data["EMBED_COLOR"])
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         )
         history_embed.set_footer(text=f"There have been {total_count:,} total tickets!")
         return [active_embed, history_embed]
@@ -56,7 +54,7 @@ class TicketCount(commands.Cog):
         if not debug:
             embed = discord.Embed(
                 title = f"There are **{active_count}** tickets open!", 
-                color = discord.Color.from_str(self.data["EMBED_COLOR"])
+                color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
             )
             embed.set_footer(text=f"There have been {total_count:,} total tickets!")
             embed_list.append(embed)

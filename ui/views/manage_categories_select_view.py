@@ -1,6 +1,6 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -10,8 +10,6 @@ class ManageCategoriesSelect(discord.ui.Select):
         labels = [category_name for category_name in list(self.ticket_info.keys())]
         options = [discord.SelectOption(label = label) for label in labels]
         super().__init__(placeholder = "Select a ticket category to manage...", options = options)
-        self.data = get_data()
-
     async def callback(self, interaction: discord.Interaction):
         try:
             category = self.values[0]

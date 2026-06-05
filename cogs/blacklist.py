@@ -6,7 +6,7 @@ import datetime
 import aiohttp
 import discord
 import time
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
@@ -14,7 +14,6 @@ from core.loggers import log_commands, log_tasks
 class Blacklist(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
         self.check_blacklists.start()
   
     def cog_unload(self) -> None:
@@ -60,9 +59,9 @@ class Blacklist(commands.Cog):
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member, blacklisted: str) -> None:
         embed = discord.Embed(
             description = f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
-            color = discord.Color.from_str(self.data['EMBED_COLOR']))
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+            color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')))
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
     @task("Send Webhook", False)
@@ -70,14 +69,14 @@ class Blacklist(commands.Cog):
         unix: int = await self.get_unix(length)
         embed = discord.Embed(
             title = "Ticket Blacklist", 
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
             description = f"`IGN` {user.display_name}\n`Discord` {user}\n`Reason` {reason or 'N/A'}\n`Expires` <t:{unix}:R>", 
             timestamp = datetime.datetime.now(datetime.timezone.utc)
         )
         embed.set_author(name = interaction.user.display_name, icon_url = interaction.user.avatar)
 
         async with aiohttp.ClientSession() as session:
-            webhook = Webhook.from_url(self.data["TICKET_BLACKLIST_WEBHOOK"], session = session)
+            webhook = Webhook.from_url(ConfigManager.get("TICKET_BLACKLIST_WEBHOOK"), session = session)
             await webhook.send(embed = embed, username = "Ticket Blacklists")
 
     @app_commands.guild_only()

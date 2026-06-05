@@ -1,13 +1,12 @@
 import discord
 import json
-from core.config import get_data
+from core.config import ConfigManager
 from services.ticket_creation_service import TicketCreationService as TicketSystem
 
 
 class TicketsView(discord.ui.View):
     def __init__(self) -> None:
         super().__init__(timeout = None)
-        self.data = get_data()
         self.tickets: dict 
         self.ticket_manager: TicketSystem = TicketSystem()
 

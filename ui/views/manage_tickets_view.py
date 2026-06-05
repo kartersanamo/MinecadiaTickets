@@ -1,7 +1,7 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
 import json
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -11,7 +11,6 @@ class ManageTicketsView(discord.ui.View):
         self.ticket_info = ticket_info
         self.category = category
         self.add_item(ManageTicketsSelect(self.ticket_info, category))
-        self.data = get_data()
         self.status_to_emoji = {
             "Enabled": "✅",
             "Disabled": "❌"
@@ -22,7 +21,7 @@ class ManageTicketsView(discord.ui.View):
             self.ticket_info = await get_info()
             category_info = self.ticket_info.get(self.category)
             category_embed = discord.Embed(title = f"Category Editor",
-                                        color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                        color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                         description = self.category)
             for ticket_type in list(self.ticket_info.get(self.category).keys()):
                 ticket_info = category_info.get(ticket_type)

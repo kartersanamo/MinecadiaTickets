@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 import asyncio
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
@@ -11,8 +11,6 @@ from services.ticket_check_service import is_ticket
 class Private(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @is_ticket()
     @app_commands.guild_only()
     @app_commands.command(name = "private", description = "Privates the ticket channel so that only Admins can view it")
@@ -33,23 +31,23 @@ class Private(commands.Cog):
         for key, value in permissions:
             if isinstance(key, discord.Member) or key == default_role:
                 await channel.set_permissions(key, overwrite = value)
-        staff_team: discord.Role = guild.get_role(self.data['ROLE_IDS']['STAFF_TEAM_ROLE_ID'])
+        staff_team: discord.Role = guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         await channel.set_permissions(staff_team, view_channel = False)
 
     @task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, description: str) -> None:
         embed = discord.Embed(
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
             description = f"{interaction.user.mention} {description}"
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data['FOOTER'], icon_url = logo_url)
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text = ConfigManager.get('FOOTER'), icon_url = logo_url)
         await interaction.followup.send(embed = embed, file = discord.File("assets/Logo.png"))
 
     @task("Private Command", True)
     async def private_command(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
-        category: discord.CategoryChannel = interaction.guild.get_channel(self.data['CHANNEL_IDS']['ADMIN+_CHECK_ID'])
+        category: discord.CategoryChannel = interaction.guild.get_channel(ConfigManager.get('CHANNEL_IDS')['ADMIN+_CHECK_ID'])
         
         await self.change_category(interaction.channel, category)
         await self.update_database(interaction.channel.id, 'Admin')
@@ -75,7 +73,7 @@ class Private(commands.Cog):
     @task("Management Command", True)
     async def management_command(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
-        category: discord.CategoryChannel = interaction.guild.get_channel(self.data['CHANNEL_IDS']['MANAGEMENT_CONTACT_ID'])
+        category: discord.CategoryChannel = interaction.guild.get_channel(ConfigManager.get('CHANNEL_IDS')['MANAGEMENT_CONTACT_ID'])
         
         await self.change_category(interaction.channel, category)
         await self.update_database(interaction.channel.id, 'Management')

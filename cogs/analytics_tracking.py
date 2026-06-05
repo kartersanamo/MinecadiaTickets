@@ -2,18 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-from pathlib import Path
 
 import discord
 from discord.ext import commands
 
-_ROOT = Path(__file__).resolve().parents[2]
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-from _analytics import logger as analytics  # noqa: E402
-from core.config import get_data
+from core.analytics import logger as analytics
+from core.config import ConfigManager
 from services.active_ticket_cache import active_ticket_cache
 
 
@@ -24,10 +18,8 @@ def _record_message(channel_id: int, *, is_staff: bool) -> None:
 class TicketAnalytics(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
-        self.data = get_data()
-
     def _is_staff(self, member: discord.Member) -> bool:
-        staff_role = self.data.get("STAFF_ROLE_ID")
+        staff_role = ConfigManager.get("STAFF_ROLE_ID")
         if staff_role:
             role = member.guild.get_role(int(staff_role))
             if role and role in member.roles:

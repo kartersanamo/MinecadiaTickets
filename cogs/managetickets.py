@@ -2,15 +2,13 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 from ui.views.manage_categories_view import ManageCategoriesView
 
 class ManageTickets(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
-        self.data = get_data()
-
     @app_commands.guild_only()
     @app_commands.command(name = "manage-tickets", description = "Manages the ticket types")
     async def manage_tickets(self, interaction: discord.Interaction):

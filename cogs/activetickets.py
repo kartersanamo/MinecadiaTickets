@@ -6,7 +6,7 @@ import cachetools
 import discord
 import asyncio
 import os
-from core.config import get_data
+from core.config import ConfigManager
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
 
@@ -14,8 +14,7 @@ from core.loggers import log_commands, log_tasks
 class ActiveTickets(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-        self.cache = cachetools.TTLCache(maxsize = self.data['ACTIVE_TICKETS_CACHE']['ENTRIES'], ttl = 60 * self.data['ACTIVE_TICKETS_CACHE']['MINUTES_TO_EXPIRE'])
+        self.cache = cachetools.TTLCache(maxsize = ConfigManager.get('ACTIVE_TICKETS_CACHE')['ENTRIES'], ttl = 60 * ConfigManager.get('ACTIVE_TICKETS_CACHE')['MINUTES_TO_EXPIRE'])
 
     @task("Check User Messages", False)
     async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
@@ -40,7 +39,7 @@ class ActiveTickets(commands.Cog):
     @task("Get Tickets", True)
     async def get_tickets_list(self, interaction: discord.Interaction) -> List[Tuple[str, str]]:
         tickets: List[Tuple[str, str]] = []
-        for category_id in self.data["TICKET_CATEGORIES"]:
+        for category_id in ConfigManager.get("TICKET_CATEGORIES"):
             category = interaction.guild.get_channel(category_id)
             if category:
                 tasks = [asyncio.create_task(self.check_user_messages(interaction.user.id, ticket, tickets)) for ticket in category.text_channels if ticket.permissions_for(interaction.user).read_messages]
@@ -67,8 +66,8 @@ class ActiveTickets(commands.Cog):
         return blocks
 
     def _build_active_tickets_layout(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
-        accent = discord.Color.from_str(self.data["EMBED_COLOR"])
-        logo_path = self.data.get("LOGO")
+        accent = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
+        logo_path = ConfigManager.get("LOGO")
         logo_url = self.client.app.embeds.get_logo_url(logo_path)
         logo_files: List[discord.File] = []
 
@@ -84,7 +83,7 @@ class ActiveTickets(commands.Cog):
         else:
             title_block += "\n\n*You are not active in any ticket channels right now.*"
 
-        thumb_desc = (self.data.get("FOOTER") or "Logo")[:256]
+        thumb_desc = (ConfigManager.get("FOOTER") or "Logo")[:256]
         use_section = False
         thumb_media: Optional[str] = None
         if logo_url:
@@ -119,7 +118,7 @@ class ActiveTickets(commands.Cog):
 
         inner.append(discord.ui.Separator(visible = True, spacing = SeparatorSpacing.small))
         inner.append(
-            discord.ui.TextDisplay(f"{self.data['FOOTER']}")
+            discord.ui.TextDisplay(f"{ConfigManager.get('FOOTER')}")
         )
 
         container = discord.ui.Container(*inner, accent_color = accent)

@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 import asyncio
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
@@ -12,15 +12,13 @@ from services.ticket_check_service import is_ticket
 class Move(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @task("Defer Response", False)
     async def defer_response(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
 
     @task("Check Blacklisted", False)
     async def check_blacklisted_category(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> bool:
-        if category.id in self.data['BLACKLISTED_MOVE_CATEGORIES']:
+        if category.id in ConfigManager.get('BLACKLISTED_MOVE_CATEGORIES'):
             log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to move a ticket to a blacklisted category {category} ({category.id})")
             await interaction.response.send_message(content = "`❌` Failed! You cannot move a ticket to this category!", ephemeral = True)
             return True
@@ -28,7 +26,7 @@ class Move(commands.Cog):
 
     @task("Check Category", False)
     async def check_ticket_category(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> bool:
-        if category.id not in self.data["TICKET_CATEGORIES"]:
+        if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to move a ticket to a non-ticket category {category} ({category.id})")
             await interaction.response.send_message(content = "`❌` Failed! That is not a ticket category!", ephemeral = True)
             return True
@@ -58,17 +56,17 @@ class Move(commands.Cog):
         for key, value in permissions:
             if isinstance(key, discord.Member) or key == interaction.guild.default_role:
                 await interaction.channel.set_permissions(key, overwrite = value)
-        staff_team = interaction.guild.get_role(self.data['ROLE_IDS']['STAFF_TEAM_ROLE_ID'])
+        staff_team = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         await interaction.channel.set_permissions(staff_team, view_channel = False)
 
     @task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, category_name: str) -> None:
         confirmation_embed = discord.Embed(
             description = f"{interaction.user.mention} has moved this ticket to **{category_name}**", 
-            color = discord.Color.from_str(self.data["EMBED_COLOR"])
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        confirmation_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url) 
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        confirmation_embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url) 
         await interaction.edit_original_response(embed = confirmation_embed)
 
     @is_ticket()

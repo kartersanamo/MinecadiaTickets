@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.decorators import task
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
@@ -9,11 +9,9 @@ from services.ticket_check_service import is_ticket
 class Remove(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
-        self.data: dict = get_data()
-
     @task("Get Role Level", False)
     async def get_role_level(self, role_id: int) -> int:
-        for level, roles in enumerate(self.data['ROLE_HIERARCHY'].values()):
+        for level, roles in enumerate(ConfigManager.get('ROLE_HIERARCHY').values()):
             if role_id in roles:
                 return level
 
@@ -32,18 +30,18 @@ class Remove(commands.Cog):
     @task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
         embed = discord.Embed(
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]),
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             description = f"{interaction.user.mention} has removed {user.mention} from the ticket {interaction.channel.mention}"
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
     @task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:
-        staff_team_role: discord.Role = interaction.guild.get_role(self.data['ROLE_IDS']['STAFF_TEAM_ROLE_ID'])
+        staff_team_role: discord.Role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         if staff_team_role in user.roles:
-            disregard_role_ids: list[int] = self.data['DISREGARD_REMOVE_COMMAND_ROLE_IDS']
+            disregard_role_ids: list[int] = ConfigManager.get('DISREGARD_REMOVE_COMMAND_ROLE_IDS')
             role_id_1: int = user.top_role.id if user.top_role.id not in disregard_role_ids else user.roles[-2].id
             role_id_2: int = interaction.user.top_role.id if interaction.user.top_role.id not in disregard_role_ids else interaction.user.roles[-2].id
             if await self.is_higher_rank(role_id_1, role_id_2):

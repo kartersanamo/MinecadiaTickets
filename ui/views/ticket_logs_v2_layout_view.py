@@ -9,7 +9,7 @@ from datetime import datetime
 import discord
 import os
 import pytz
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from ui.views.ticket_log_u_i_state_view import TicketLogUIState
 from ui.views.t_l_back_button_view import TLBackButton
@@ -39,7 +39,7 @@ def _safe_int_ts(raw: Any) -> Optional[int]:
 
 
 def _staff_privacy(interaction: discord.Interaction, row: Dict[str, Any]) -> Tuple[bool, bool]:
-    cfg = get_data()
+    cfg = ConfigManager.all()
     star = interaction.guild.get_role(cfg["ROLE_IDS"]["ADMINISTRATOR_PERMS_ROLE_ID"])
     if star is not None and star in interaction.user.roles:
         # Administrator perms role bypasses all private-ticket redaction.
@@ -249,7 +249,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
     def __init__(self, interaction: discord.Interaction, state: TicketLogUIState) -> None:
         super().__init__(timeout = 600)
         self.state = state
-        cfg = get_data()
+        cfg = ConfigManager.all()
         self._logo_files, self._thumb = _logo_files_and_thumb(interaction, cfg)
         self._cfg = cfg
         rows = _fetch_rows(state.target.id, state.mode, state.sort_key, state.type_filter)

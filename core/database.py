@@ -8,7 +8,7 @@ from typing import Any, Optional
 import mysql.connector
 from mysql.connector import pooling
 
-from core.config import ConfigLoader
+from core.config import ConfigManager
 from core.loggers import log_tasks
 
 log = logging.getLogger("Tasks")
@@ -27,7 +27,7 @@ class DatabasePool:
         return cls._instance
 
     def _pool_config(self) -> dict[str, Any]:
-        cfg = ConfigLoader.get()["DATABASE_CONFIG"]
+        cfg = ConfigManager.get_db_config()
         return {
             "host": cfg["host"],
             "port": cfg["port"],
@@ -62,18 +62,9 @@ class DatabasePool:
                 rows = cursor.fetchall()
             cursor.close()
         except Exception as error:
-            try:
-                import sys
-                from pathlib import Path
+            from core.errors.db import log_db_failure
 
-                root = Path(__file__).resolve().parent.parent.parent
-                if str(root) not in sys.path:
-                    sys.path.insert(0, str(root))
-                from _errors.db import log_db_failure
-
-                log_db_failure(log_tasks, error, query_hint=query)
-            except ImportError:
-                log_tasks.error("Error executing query: %s %s", query, error, exc_info=True)
+            log_db_failure(log_tasks, error, query_hint=query)
         finally:
             if connection is not None:
                 connection.close()

@@ -1,7 +1,7 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
 import json
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -10,13 +10,11 @@ class ManageCategoriesView(discord.ui.View):
         super().__init__(timeout = None)
         self.ticket_info = ticket_info
         self.add_item(ManageCategoriesSelect(self.ticket_info))
-        self.data = get_data()
-    
     async def update_embed(self, interaction: discord.Interaction):
         try:
             self.ticket_info = await get_info()
             main_menu_embed = discord.Embed(title = "Main Menu",
-                                color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = "Select Category")
             for ticket_cat in list(self.ticket_info.keys()):
                 val = ""

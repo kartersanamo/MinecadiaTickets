@@ -1,6 +1,6 @@
 from discord.ext import commands, tasks
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import aexecute
 from core.decorators import task
 from core.loggers import log_commands
@@ -9,8 +9,6 @@ from core.loggers import log_commands
 class Logs(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-    
     @commands.Cog.listener()
     async def on_ready(self):
         # await self.update_ticket_vc_count_loop.start() Turned off due to rate limits
@@ -26,8 +24,8 @@ class Logs(commands.Cog):
     @task("Update Ticket VC Count")
     async def update_ticket_vc_count(self) -> None:
         new_ticket_count: int = await self.get_ticket_count()
-        guild = self.client.get_guild(self.data['GUILD_ID'])
-        channel = guild.get_channel(self.data['CHANNEL_IDS']['TICKET_COUNT_VOICE_CHANNEL_ID'])
+        guild = self.client.get_guild(ConfigManager.get('GUILD_ID'))
+        channel = guild.get_channel(ConfigManager.get('CHANNEL_IDS')['TICKET_COUNT_VOICE_CHANNEL_ID'])
         await channel.edit(name = f"Tickets: {new_ticket_count}")
 
     @tasks.loop(minutes = 5)
@@ -39,7 +37,7 @@ class Logs(commands.Cog):
         if interaction.type == discord.InteractionType.application_command:
             name = f"/{interaction.command.name}"
             try:
-                for option in interaction.data['options']:
+                for option in interaction.data.get('options'):
                     name += f" {option['name']}:'{option['value']}'"
             except KeyError:
                 pass

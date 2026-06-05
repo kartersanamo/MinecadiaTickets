@@ -1,7 +1,7 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
 import json
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -22,8 +22,6 @@ class ManageQuestionView(discord.ui.View):
             }
         }
         super().__init__(timeout = None)
-        self.data = get_data()
-    
     async def update_embed(self, interaction: discord.Interaction):
         try:
             self.ticket_info = await get_info()
@@ -32,7 +30,7 @@ class ManageQuestionView(discord.ui.View):
                 if question.get('Label') == self.question:
                     question_info = question
             embed = discord.Embed(title = "Manage Ticket Questions",
-                                color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = self.ticket_category + " » " + self.ticket)
             embed.add_field(name = "Question", value = question_info.get('Label'))
             embed.add_field(name = "Placeholder", value = question_info.get('Placeholder'))
@@ -43,7 +41,7 @@ class ManageQuestionView(discord.ui.View):
 
     async def change_value(self, interaction: discord.Interaction, value: str):
         try:
-            star_role = interaction.guild.get_role(self.data['ROLE_IDS']['ADMINISTRATOR_PERMS_ROLE_ID']) 
+            star_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['ADMINISTRATOR_PERMS_ROLE_ID']) 
             if not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()
@@ -51,7 +49,7 @@ class ManageQuestionView(discord.ui.View):
             top_embed = interaction.message.embeds[0]
             description, image = list(self.mapping.get(value).values())
             embed = discord.Embed(title = f"Enter the new {value.lower()} below",
-                                color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = description)
             embed.set_image(url = image)
             await interaction.message.edit(embeds = [top_embed, embed], view = None)
@@ -111,7 +109,7 @@ class ManageQuestionView(discord.ui.View):
     @discord.ui.button(label = "Change Length", style = discord.ButtonStyle.grey, custom_id = "change_length", row = 0, disabled = False)
     async def change_length(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
-            star_role = interaction.guild.get_role(self.data['ROLE_IDS']['ADMINISTRATOR_PERMS_ROLE_ID']) 
+            star_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['ADMINISTRATOR_PERMS_ROLE_ID']) 
             if not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()

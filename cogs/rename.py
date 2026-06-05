@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 import asyncio
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.decorators import task
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
@@ -11,8 +11,6 @@ from services.ticket_check_service import is_ticket
 class Rename(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @task("Edit Name", False)
     async def edit_channel_name(self, channel: discord.TextChannel, name: str):
         return await channel.edit(name = name)
@@ -21,10 +19,10 @@ class Rename(commands.Cog):
     async def send_embed(self, interaction: discord.Interaction, old_name: str) -> None:
         rename_embed = discord.Embed(
             description = f"{interaction.user.mention} has changed the ticket name from **{old_name}** to **{interaction.channel.name}**.", 
-            color = discord.Color.from_str(self.data["EMBED_COLOR"])
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        rename_embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        rename_embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = rename_embed, file = discord.File("assets/Logo.png"))
 
     @is_ticket()

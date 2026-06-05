@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import Literal
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.decorators import task
 from core.loggers import log_commands
 from ui.views.ticket_logs_view import TicketLogs
@@ -12,8 +12,6 @@ from ui.views.tickets_view2_view import TicketsView2
 class TicketsSend(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @app_commands.guild_only() 
     @app_commands.command(name = "send-tickets", description = "Sends a message prompt.")
     @app_commands.describe(option = "The message that you'd wish to send")
@@ -28,7 +26,7 @@ class TicketsSend(commands.Cog):
             "Tickets": [
                 {
                     "embed": discord.Embed(
-                        color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
+                        color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
                         description = ("**Select a category that best represents your ticket reasoning**:\n\n"
                                        ""
                                        "**-** Be sure to be as specific and detailed as possible in your ticket.\n"
@@ -45,7 +43,7 @@ class TicketsSend(commands.Cog):
                 },
                 {
                     "embed": discord.Embed(
-                        color = discord.Color.from_str(self.data["EMBED_COLOR"]),
+                        color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
                         description = "**Want to see your previous tickets? Click the envelope down below!**"
                     ),
                     "view": TicketLogs(),

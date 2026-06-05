@@ -1,6 +1,6 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -12,8 +12,6 @@ class ManageQuestionsSelect(discord.ui.Select):
         labels = [question.get('Label', 'None') for question in list(self.ticket_info.get(self.ticket_category, {self.ticket_category: {self.ticket: {"Questions": [{'Label': 'None'}]}}}).get(self.ticket, {self.ticket: {"Questions": [{'Label': 'None'}]}}).get('Questions', [{'Label': 'None'}]))]
         options = [discord.SelectOption(label = label) for label in labels]
         super().__init__(placeholder = "Select a question to manage...", options = options)
-        self.data = get_data()
-    
     async def callback(self, interaction: discord.Interaction):
         try:
             question = self.values[0]

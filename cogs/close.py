@@ -1,14 +1,6 @@
 from discord.ext import commands
-import sys
-from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[2]
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-try:
-    from _analytics import logger as analytics
-except ImportError:
-    analytics = None
+from core.analytics import logger as analytics
 from discord import app_commands
 import datetime
 import requests
@@ -16,7 +8,7 @@ import discord
 import asyncio
 import time
 import pytz
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
@@ -26,8 +18,6 @@ from services.statistics_service import is_found
 class Close(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     def convert_to_est(self, timestamp: str) -> str:
         try:
             est_time = datetime.datetime.fromtimestamp(int(float(timestamp)), tz = pytz.utc).astimezone(pytz.timezone('US/Eastern'))
@@ -150,11 +140,11 @@ class Close(commands.Cog):
         
         desc = f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n **Reason:** {reason}\n **Owner:** {owner_mention} / {owner.name}\n **Ticket Duration:** {delta}\n[Ticket Transcript]({link})"
         embed = discord.Embed(
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
             description = desc
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
 
         return embed
     
@@ -173,7 +163,7 @@ class Close(commands.Cog):
             if privated == "Management"
             else "TICKET_LOGS_ID"
         )
-        ticket_log_channel_id = self.data["CHANNEL_IDS"][channel_json_string]
+        ticket_log_channel_id = ConfigManager.get("CHANNEL_IDS")[channel_json_string]
         ticket_log_channel = guild.get_channel(ticket_log_channel_id)
         await ticket_log_channel.send(
             embed=embed, file=discord.File("assets/Logo.png")

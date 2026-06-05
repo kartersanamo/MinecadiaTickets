@@ -1,7 +1,7 @@
 #from cogs.sendtickets import send_tickets_command
 import discord
 import json
-from core.config import get_data
+from core.config import ConfigManager
 from core.loggers import log_commands
 
 
@@ -11,7 +11,6 @@ class ManageTypeView(discord.ui.View):
         self.ticket_category = ticket_category
         self.ticket = ticket
         super().__init__(timeout = None)
-        self.data = get_data()
         self.add_item(ManageQuestionsSelect(self.ticket_info, self.ticket_category, self.ticket))
         self.mapping = {
             "Name": {
@@ -60,7 +59,7 @@ class ManageTypeView(discord.ui.View):
             else:
                 message = f"```{ticket_info.get('Message')}```" if ticket_info.get('Message', None) else "None"
             manage_type_embed = discord.Embed(title = f"Manage Ticket Type",
-                                            color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                            color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                             description = self.ticket_category + " » " + self.ticket)
             manage_type_embed.add_field(name = "Status", value = ticket_info.get('Status', "None"))
             manage_type_embed.add_field(name = "Emoji", value = ticket_info.get('Emoji', "None"))
@@ -70,7 +69,7 @@ class ManageTypeView(discord.ui.View):
             manage_type_embed.add_field(name = "Roles", value = "".join(roles))
             manage_type_embed.add_field(name = "Message", value = message)
             questions_embed = discord.Embed(title = f"Manage Ticket Questions",
-                                            color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                            color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                             description = self.ticket_category + " » " + self.ticket)
             for question in ticket_info.get('Questions', [{}]):
                 questions_embed.add_field(name = question.get('Label', 'None'), value = f"`»` {question.get('Placeholder', 'None')}\n `»` {question.get('Length', 'None')}")
@@ -80,7 +79,7 @@ class ManageTypeView(discord.ui.View):
     
     async def change_value(self, interaction: discord.Interaction, value):
         try:
-            star_role = interaction.guild.get_role(self.data['ROLE_IDS']['ADMINISTRATOR_PERMS_ROLE_ID']) 
+            star_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['ADMINISTRATOR_PERMS_ROLE_ID']) 
             if not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()
@@ -88,7 +87,7 @@ class ManageTypeView(discord.ui.View):
             top_embed = interaction.message.embeds[0]
             description, image = list(self.mapping.get(value).values())
             embed = discord.Embed(title = f"Enter the new {value.lower()} below",
-                                color = discord.Color.from_str(self.data['EMBED_COLOR']),
+                                color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = description)
             embed.set_image(url = image)
             await interaction.message.edit(embeds = [top_embed, embed], view = None)

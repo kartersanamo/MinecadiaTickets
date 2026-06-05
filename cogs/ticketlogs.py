@@ -10,7 +10,7 @@ from datetime import datetime
 import discord
 import os
 import pytz
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
@@ -33,7 +33,7 @@ def _safe_int_ts(raw: Any) -> Optional[int]:
 
 
 def _staff_privacy(interaction: discord.Interaction, row: Dict[str, Any]) -> Tuple[bool, bool]:
-    cfg = get_data()
+    cfg = ConfigManager.all()
     star = interaction.guild.get_role(cfg["ROLE_IDS"]["ADMINISTRATOR_PERMS_ROLE_ID"])
     if star is not None and star in interaction.user.roles:
         # Administrator perms role bypasses all private-ticket redaction.
@@ -256,7 +256,7 @@ class TicketLogs(commands.Cog):
                         "This response would exceed Discord limits. "
                         "Try a **type filter** or the other **perspective** to narrow results."
                     ),
-                    accent_color = _accent_int(get_data()),
+                    accent_color = _accent_int(ConfigManager.all()),
                 )
             )
             await interaction.edit_original_response(content = None, view = fb)

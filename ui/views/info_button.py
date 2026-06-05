@@ -1,6 +1,6 @@
 import discord
 
-from core.config import get_settings
+from core.config import ConfigManager
 from core.loggers import log_tasks
 from ui.modals.questions import Questions
 
@@ -10,8 +10,6 @@ class InfoButton(discord.ui.View):
         super().__init__(timeout=None)
         self.ticket_type = ticket_type
         self.ticket_info = ticket_info
-        self.data = get_settings()
-
     @discord.ui.button(
         label="Enter Information",
         style=discord.ButtonStyle.grey,

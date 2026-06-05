@@ -3,12 +3,6 @@ from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parent)
 
-import sys
-
-_minecadia_root = Path(__file__).resolve().parent.parent
-if str(_minecadia_root) not in sys.path:
-    sys.path.insert(0, str(_minecadia_root))
-
 from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
 from ui.views.tickets_view2_view import TicketsView2
@@ -19,10 +13,10 @@ from discord import app_commands
 from dotenv import load_dotenv
 import discord
 from core.app import BotApp
-from core.config import get_data
+from core.config import ConfigManager
 from core.decorators import task
 from core.loggers import log_commands, log_tasks
-from _errors.setup import wire_bot
+from core.errors.setup import wire_bot
 
 _bots_env = (
     Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
@@ -37,7 +31,6 @@ COG_FILES = [file.split(".")[0].title() for file in os.listdir("cogs/") if file.
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix = '.', intents = discord.Intents().all())
-        self.data: dict = get_data()
         wire_bot(self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks)
 
     @task("Setup Cogs")
@@ -49,12 +42,7 @@ class Client(commands.Bot):
 
     @task("Register Analytics")
     async def register_analytics(self):
-        import sys
-
-        _minecadia = Path(__file__).resolve().parent.parent
-        if str(_minecadia) not in sys.path:
-            sys.path.insert(0, str(_minecadia))
-        from _analytics.register import register_command_tracking
+        from core.analytics.register import register_command_tracking
 
         await register_command_tracking(self)
 
@@ -69,7 +57,7 @@ class Client(commands.Bot):
 
     @task("Update Presence")
     async def update_presence(self):
-        presence = self.data["PRESENCE"]
+        presence = ConfigManager.get("PRESENCE")
         await client.change_presence(activity = discord.Game(name = presence))
         log_tasks.info(f"Updated the bot's presence to {presence}")
 
@@ -89,7 +77,7 @@ class Client(commands.Bot):
 
     @task("Setup Hook")
     async def setup_hook(self):
-        from _errors.setup import wire_bot_async_setup
+        from core.errors.setup import wire_bot_async_setup
 
         await wire_bot_async_setup(self, bot_name="Tickets", log_tasks=log_tasks)
         self.app = BotApp.from_bot(self)

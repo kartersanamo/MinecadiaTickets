@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import get_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
@@ -11,8 +11,6 @@ from services.ticket_check_service import is_ticket
 class Add(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
-        self.data: dict = get_data()
-
     @task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         rows = execute(f"SELECT 1 FROM blacklists WHERE userID = {user.id} LIMIT 1")
@@ -40,11 +38,11 @@ class Add(commands.Cog):
     @task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
         embed = discord.Embed(
-            color = discord.Color.from_str(self.data["EMBED_COLOR"]), 
+            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
             description = f"{interaction.user.mention} has added {user.mention} to the ticket {interaction.channel.mention}"
         )
-        logo_url = self.client.app.embeds.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text = self.data["FOOTER"], icon_url = logo_url)
+        logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
     @is_ticket()

@@ -6,9 +6,6 @@ import os
 import sys
 from pathlib import Path
 
-_minecadia_root = Path(__file__).resolve().parent.parent.parent
-if str(_minecadia_root) not in sys.path:
-    sys.path.insert(0, str(_minecadia_root))
 from typing import TYPE_CHECKING
 import discord
 
@@ -63,7 +60,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 status=400,
             )
 
-        guild_id = int(client.data["GUILD_ID"])
+        guild_id = int(ConfigManager.get("GUILD_ID"))
         guild = client.get_guild(guild_id)
         if guild is None:
             return web.json_response({"error": "Guild not available"}, status=503)
@@ -100,7 +97,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             )
         except Exception as exc:
             log.exception("Dashboard close failed for %s", channel_id)
-            from _errors.messages import user_message_for
+            from core.errors.messages import user_message_for
 
             return web.json_response({"error": user_message_for(exc)}, status=500)
 
@@ -110,7 +107,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
         data = client.data
         embed = discord.Embed(
             description=description,
-            color=discord.Color.from_str(data["EMBED_COLOR"]),
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
         logo = data.get("LOGO")
         logo_url = None
@@ -141,7 +138,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 status=400,
             )
 
-        guild = client.get_guild(int(client.data["GUILD_ID"]))
+        guild = client.get_guild(int(ConfigManager.get("GUILD_ID")))
         if guild is None:
             return web.json_response({"error": "Guild not available"}, status=503)
 
@@ -156,7 +153,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             except Exception:
                 return web.json_response({"error": "Staff actor not found in guild"}, status=400)
 
-        if channel.category is None or channel.category.id not in client.data["TICKET_CATEGORIES"]:
+        if channel.category is None or channel.category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             return web.json_response({"error": "This channel is not a ticket"}, status=400)
 
         close_cog = client.get_cog("Close")
@@ -242,9 +239,9 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                             break
                 if category is None:
                     return web.json_response({"error": "Target category not found"}, status=404)
-                if category.id in client.data["BLACKLISTED_MOVE_CATEGORIES"]:
+                if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES"):
                     return web.json_response({"error": "You cannot move to this category"}, status=400)
-                if category.id not in client.data["TICKET_CATEGORIES"]:
+                if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
                     return web.json_response({"error": "That is not a ticket category"}, status=400)
                 original_overwrites = list(channel.overwrites.items())
                 await channel.edit(category=category)
@@ -253,7 +250,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 for key, value in original_overwrites:
                     if isinstance(key, discord.Member) or key == guild.default_role:
                         await channel.set_permissions(key, overwrite=value)
-                staff_team = guild.get_role(client.data["ROLE_IDS"]["STAFF_TEAM_ROLE_ID"])
+                staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
                 if staff_team:
                     await channel.set_permissions(staff_team, view_channel=False)
                 await channel.send(embed=_ticket_embed(
@@ -265,11 +262,11 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 if private_cog is None:
                     return web.json_response({"error": "Private cog not loaded"}, status=503)
                 if command == "private":
-                    target_category = guild.get_channel(client.data["CHANNEL_IDS"]["ADMIN+_CHECK_ID"])
+                    target_category = guild.get_channel(ConfigManager.get("CHANNEL_IDS")["ADMIN+_CHECK_ID"])
                     privated = "Admin"
                     desc = "has turned this channel private."
                 else:
-                    target_category = guild.get_channel(client.data["CHANNEL_IDS"]["MANAGEMENT_CONTACT_ID"])
+                    target_category = guild.get_channel(ConfigManager.get("CHANNEL_IDS")["MANAGEMENT_CONTACT_ID"])
                     privated = "Management"
                     desc = "has made this channel for management."
                 if not isinstance(target_category, discord.CategoryChannel):
@@ -281,7 +278,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 for key, value in previous_overwrites:
                     if isinstance(key, discord.Member) or key == guild.default_role:
                         await channel.set_permissions(key, overwrite=value)
-                staff_team = guild.get_role(client.data["ROLE_IDS"]["STAFF_TEAM_ROLE_ID"])
+                staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
                 if staff_team:
                     await channel.set_permissions(staff_team, view_channel=False)
                 await channel.send(embed=_ticket_embed(f"{actor.mention} {desc}"))
@@ -290,7 +287,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             return web.json_response({"error": "Unknown ticket command"}, status=400)
         except Exception as exc:
             log.exception("Dashboard ticket-command failed for %s/%s", channel_id, command)
-            from _errors.messages import user_message_for
+            from core.errors.messages import user_message_for
 
             return web.json_response({"error": user_message_for(exc)}, status=500)
 

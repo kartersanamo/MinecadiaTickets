@@ -5,7 +5,7 @@ import time
 import aiohttp
 import discord
 
-from core.config import get_settings, get_ticket_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
@@ -15,12 +15,11 @@ LOGO = "assets/Logo.png"
 
 class TicketCreationService:
     def __init__(self):
-        self.data: dict = get_settings()
-        self.tickets = get_ticket_data()
+        self.tickets = ConfigManager.tickets()
 
     @task("Check Cooldown Bypass", False)
     async def has_ticket_cooldown_bypass(self, interaction: discord.Interaction) -> bool:
-        role_ids = self.data.get("ROLE_IDS", {})
+        role_ids = ConfigManager.get("ROLE_IDS", {})
         bypass_ids = {
             int(role_ids.get("STAFF_TEAM_ROLE_ID", 0)),
             int(role_ids.get("ADMINISTRATOR_PERMS_ROLE_ID", 0)),
@@ -75,10 +74,10 @@ class TicketCreationService:
 
     @task("Check Verified", False)
     async def check_verified(self, interaction: discord.Interaction) -> str:
-        role = interaction.guild.get_role(self.data["ROLE_IDS"]["VERIFIED_ROLE_ID"])
+        role = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["VERIFIED_ROLE_ID"])
         if role not in interaction.user.roles:
             channel = interaction.guild.get_channel(
-                self.data["CHANNEL_IDS"]["VERIFY_CHANNEL_ID"]
+                ConfigManager.get("CHANNEL_IDS")["VERIFY_CHANNEL_ID"]
             )
             log_tasks.warning(
                 f"{interaction.user} ({interaction.user.id}) is not verified and tried to open a ticket"
@@ -121,8 +120,8 @@ class TicketCreationService:
             )
             return "`❌` Tickets are currently unavailable, please check again shortly."
 
-        category_name = interaction.data["custom_id"]
-        ticket_type = interaction.data["values"][0]
+        category_name = interaction.data.get("custom_id")
+        ticket_type = interaction.data.get("values")[0]
         category_data = info.get(category_name, {})
         ticket_data = category_data.get(ticket_type, {})
 
@@ -199,12 +198,12 @@ class TicketCreationService:
 
     @task("Create Ticket", False)
     async def create_ticket(self, interaction: discord.Interaction) -> discord.TextChannel:
-        custom_id = interaction.data["custom_id"]
-        ticket_type = interaction.data["values"][0]
+        custom_id = interaction.data.get("custom_id")
+        ticket_type = interaction.data.get("values")[0]
         ticket_info = self.tickets[custom_id][ticket_type]
         ticket_type = f"{custom_id} ({ticket_type})"
         category = interaction.guild.get_channel(ticket_info["Category"])
-        staff = interaction.guild.get_role(self.data["ROLE_IDS"]["STAFF_TEAM_ROLE_ID"])
+        staff = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         permissions = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=False),
@@ -219,11 +218,11 @@ class TicketCreationService:
             category=category,
             overwrites=permissions,
         )
-        staff_team = interaction.guild.get_role(self.data["ROLE_IDS"]["STAFF_TEAM_ROLE_ID"])
+        staff_team = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         await interaction.channel.set_permissions(staff_team, view_channel=False)
         embed = discord.Embed(
             description=f"✅ You have successfully opened a ticket! {channel.mention}",
-            color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
         await interaction.edit_original_response(embed=embed)
         description = (
@@ -235,11 +234,11 @@ class TicketCreationService:
         )
         description += ticket_info["Message"] + "\n \n**One of our staff members will be with you shortly.**"
         embed = discord.Embed(
-            color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             description=description,
         )
         logo_url = interaction.client.app.embeds.get_logo_url(LOGO)
-        embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
         from ui.views.info_button import InfoButton
 
         await channel.send(
@@ -268,7 +267,7 @@ class TicketCreationService:
     async def new_ticket(self, interaction: discord.Interaction, view: discord.ui.View) -> None:
         embed = discord.Embed(
             description=f"📖 Attempting to create a new ticket for {interaction.user.mention}",
-            color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
         start = time.perf_counter()
@@ -277,7 +276,7 @@ class TicketCreationService:
         if result:
             embed = discord.Embed(
                 description=result,
-                color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+                color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             )
             return await interaction.edit_original_response(embed=embed)
         channel: discord.TextChannel = await self.create_ticket(interaction)

@@ -3,7 +3,7 @@ import random
 
 import discord
 
-from core.config import get_settings, get_ticket_data
+from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
 from core.loggers import log_tasks
@@ -20,8 +20,7 @@ class Questions(discord.ui.Modal):
             timeout=None,
             custom_id=str(random.randint(0, 50000000000)),
         )
-        self.tickets = get_ticket_data()
-        self.data = get_settings()
+        self.tickets = ConfigManager.tickets()
         self._modal_field_headings: list = []
         self.add_items()
 
@@ -70,7 +69,7 @@ class Questions(discord.ui.Modal):
                     f"Closed by <@{rows[0]['closed_by']}> on <t:{rows[0]['closed_at']}:f> "
                     f"(<t:{rows[0]['closed_at']}:R>)\nReason: Privated Ticket"
                 ),
-                color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+                color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             )
         else:
             embed = discord.Embed(
@@ -80,10 +79,10 @@ class Questions(discord.ui.Modal):
                     f"(<t:{rows[0]['closed_at']}:R>)\nReason: {rows[0]['reason']}\n"
                     f"[Ticket Transcript]({rows[0]['transcript']})"
                 ),
-                color=discord.Color.from_str(self.data["EMBED_COLOR"]),
+                color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             )
-        logo_url = EmbedService.get_logo_url(self.data["LOGO"])
-        embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
+        logo_url = EmbedService.get_logo_url(ConfigManager.get("LOGO"))
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
         return embed
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -103,11 +102,11 @@ class Questions(discord.ui.Modal):
                     new_description += f"**{heading}**\n{item.value}\n \n"
             new_description += "\n\n".join(split[2:])
             embed = discord.Embed(
-                description=new_description, color=discord.Color.from_str(self.data["EMBED_COLOR"])
+                description=new_description, color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
             )
 
-            logo_url = interaction.client.app.embeds.get_logo_url(self.data["LOGO"])
-            embed.set_footer(text=self.data["FOOTER"], icon_url=logo_url)
+            logo_url = interaction.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+            embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
 
             previous_ticket: discord.Embed = await self.get_previous_ticket(
                 owner_id=interaction.user.id

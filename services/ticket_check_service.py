@@ -1,17 +1,17 @@
 from discord import app_commands
 import discord
 
-from core.config import get_settings
+from core.config import ConfigManager
 
 
 class TicketCheckService:
     @staticmethod
     def ticket_only():
         async def predicate(interaction: discord.Interaction) -> bool:
-            settings = get_settings()
+            settings = ConfigManager.all()
             if (
                 not interaction.channel.category
-                or interaction.channel.category.id not in settings["TICKET_CATEGORIES"]
+                or interaction.channel.category.id not in ConfigManager.get("TICKET_CATEGORIES")
             ):
                 raise app_commands.CheckFailure(
                     "`❌` Failed! This command can only be ran inside of a ticket."
