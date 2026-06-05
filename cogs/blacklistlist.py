@@ -22,8 +22,8 @@ class BlacklistList(commands.Cog):
     async def get_blacklist_data(self, interaction: discord.Interaction, rows: list) -> list:
         blacklist_data: list = []
         for row in rows:
-            user_id = int(row['userID'])
-            staff_id = int(row['staffID'])
+            user_id = int(row['user_id'])
+            staff_id = int(row['staff_id'])
             reason = row['reason']
             user: discord.Member = interaction.guild.get_member(user_id)
             staff: discord.Member = interaction.guild.get_member(staff_id)
@@ -36,7 +36,7 @@ class BlacklistList(commands.Cog):
             else:
                 staff_mention: str = f"`{staff_id}`"
             user_info: str = f"{user_name} ({user_id})"
-            reason_info: str = f"`Staff` {staff_mention}\n`Reason` {reason}\n`Unblacklisted` <t:{int(row['whenToUnbl'])}:R>"
+            reason_info: str = f"`Staff` {staff_mention}\n`Reason` {reason}\n`Unblacklisted` <t:{int(row['unblacklist_at'])}:R>"
             blacklist_data.append(f"**{user_info}**\n{reason_info}\n")
         if not blacklist_data:
             blacklist_data.append("No data found.")
@@ -50,7 +50,7 @@ class BlacklistList(commands.Cog):
 
     @task("Blacklist List Command", True)
     async def blacklistlist_command(self, interaction: discord.Interaction) -> None:
-        rows: list = execute("SELECT userID, staffID, whenToUnbl, reason FROM blacklists")
+        rows: list = execute("SELECT user_id, staff_id, unblacklist_at, reason FROM blacklists")
         blacklist_data: list = await self.get_blacklist_data(interaction, rows)
         await self.send_paginator(interaction, blacklist_data)
 

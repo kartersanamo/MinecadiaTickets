@@ -14,7 +14,10 @@ class TicketLogs(discord.ui.View):
     
     @task("Get Data", False)
     async def get_data(self, user_id: int):
-        rows = execute(f"SELECT opened_at, name, type, transcript, reason FROM tickets WHERE ownerID = '{user_id}' AND active = 'False' ORDER BY opened_at")
+        rows = execute(
+            "SELECT opened_at, name, type, transcript, reason FROM tickets WHERE owner_id = %s AND is_active = 0 ORDER BY opened_at",
+            (user_id,),
+        )
         data: list = []
 
         for row in rows:

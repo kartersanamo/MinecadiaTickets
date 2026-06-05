@@ -74,10 +74,10 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
         if cog is None:
             return web.json_response({"error": "Close cog not loaded"}, status=503)
 
-        closed_by = guild.get_member(closed_by_id)
-        if closed_by is None:
+        closed_by_id = guild.get_member(closed_by_id)
+        if closed_by_id is None:
             try:
-                closed_by = await guild.fetch_member(closed_by_id)
+                closed_by_id = await guild.fetch_member(closed_by_id)
             except Exception:
                 return web.json_response(
                     {
@@ -90,7 +90,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             await cog.close_ticket_channel(
                 guild,
                 channel,
-                closed_by,
+                closed_by_id,
                 reason,
             )
         except Exception as exc:
@@ -192,7 +192,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 member = guild.get_member(user_id) or await guild.fetch_member(user_id)
                 if member is None:
                     return web.json_response({"error": "User not found"}, status=404)
-                rows = execute(f"SELECT 1 FROM blacklists WHERE userID = {member.id} LIMIT 1")
+                rows = execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (member.id,))
                 if rows:
                     return web.json_response({"error": "User is ticket blacklisted"}, status=400)
                 if member.is_timed_out():

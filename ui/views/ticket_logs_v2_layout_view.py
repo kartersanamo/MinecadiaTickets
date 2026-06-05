@@ -64,23 +64,28 @@ def _fetch_rows(
     uid = int(target_id)
     order_col = "opened_at" if sort_key == "opened_at" else "closed_at"
     q = (
-        "SELECT channelID, number, name, type, transcript, reason, privated, closed_by, ownerID, opened_at, closed_at "
-        "FROM tickets WHERE active = 'False'"
+        "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+        "FROM tickets WHERE is_active = 0"
     )
+    params: list[Any] = []
     if mode == "closer":
-        q += f" AND closed_by = '{uid}'"
+        q += " AND closed_by_id = %s"
+        params.append(uid)
     else:
-        q += f" AND ownerID = '{uid}'"
+        q += " AND owner_id = %s"
+        params.append(uid)
     if type_filter:
-        q += f" AND type = '{_sql_escape(type_filter)}'"
+        q += " AND type = %s"
+        params.append(type_filter)
     q += f" ORDER BY {order_col} DESC"
-    return execute(q) or []
+    return execute(q, tuple(params)) or []
 
 
 def _fetch_row_by_channel(channel_id: int) -> Optional[Dict[str, Any]]:
     rows = execute(
-        "SELECT channelID, number, name, type, transcript, reason, privated, closed_by, ownerID, opened_at, closed_at "
-        f"FROM tickets WHERE channelID = '{int(channel_id)}' AND active = 'False' LIMIT 1"
+        "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+        "FROM tickets WHERE channel_id = %s AND is_active = 0 LIMIT 1",
+        (int(channel_id),),
     )
     return rows[0] if rows else None
 
@@ -91,18 +96,21 @@ def _fetch_row_by_number(
     number: str,
 ) -> Optional[Dict[str, Any]]:
     uid = int(target_id)
-    num = _sql_escape(number.strip())
+    num = number.strip()
     if not num:
         return None
     q = (
-        "SELECT channelID, number, name, type, transcript, reason, privated, closed_by, ownerID, opened_at, closed_at "
-        "FROM tickets WHERE active = 'False' AND number = '" + num + "'"
+        "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+        "FROM tickets WHERE is_active = 0 AND number = %s"
     )
+    params: list[Any] = [num]
     if mode == "closer":
-        q += f" AND closed_by = '{uid}'"
+        q += " AND closed_by_id = %s"
+        params.append(uid)
     else:
-        q += f" AND ownerID = '{uid}'"
-    rows = execute(q + " LIMIT 1")
+        q += " AND owner_id = %s"
+        params.append(uid)
+    rows = execute(q + " LIMIT 1", tuple(params))
     return rows[0] if rows else None
 
 
@@ -217,15 +225,15 @@ def _format_detail_text(interaction: discord.Interaction, row: Dict[str, Any]) -
         reason = "*Hidden (private ticket).*"
 
     priv = (row.get("privated") or "").strip() or "Public"
-    closer_id = str(row.get("closed_by") or "").strip()
+    closer_id = str(row.get("closed_by_id") or "").strip()
     closer_line = f"<@{closer_id}>" if closer_id.isdigit() else "`N/A`"
-    owner_id = str(row.get("ownerID") or "").strip()
+    owner_id = str(row.get("owner_id") or "").strip()
     owner_line = f"<@{owner_id}>" if owner_id.isdigit() else "`Unknown`"
 
     name = _truncate(str(row.get("name") or "unknown"), 200)
     typ = _truncate(str(row.get("type") or "Unknown"), 120)
     num = _truncate(str(row.get("number") or ""), 32)
-    cid = str(row.get("channelID") or "")
+    cid = str(row.get("channel_id") or "")
 
     block = (
         f"## Ticket `#{num}` — {typ}\n"

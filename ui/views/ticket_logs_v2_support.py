@@ -18,7 +18,7 @@ def _row_by_channel(
     cid = int(channel_id)
     for row in rows:
         try:
-            if int(row.get("channelID") or 0) == cid:
+            if int(row.get("channel_id") or 0) == cid:
                 return row
         except (TypeError, ValueError):
             continue

@@ -23,7 +23,10 @@ class Private(commands.Cog):
 
     @task("Update Database", False)
     async def update_database(self, channel_id: int, privated_str: str) -> None:
-        execute(f"UPDATE tickets SET privated = '{privated_str}' WHERE channelID = '{channel_id}'")
+        execute(
+            "UPDATE tickets SET privated = %s WHERE channel_id = %s",
+            (privated_str, channel_id),
+        )
 
     @task("Update Permissions", False)
     async def update_permissions(self, channel: discord.TextChannel, guild: discord.Guild, permissions, default_role: discord.Role) -> None:

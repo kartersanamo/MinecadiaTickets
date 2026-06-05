@@ -11,7 +11,7 @@ class TicketCount(commands.Cog):
         self.client: commands.Bot = client
     @task("Get Active List", False)
     async def get_active_list(self) -> list[dict]:
-        rows = execute("SELECT type, COUNT(*) as count FROM tickets WHERE active = 'True' GROUP BY type ORDER BY count DESC")
+        rows = execute("SELECT type, COUNT(*) as count FROM tickets WHERE is_active = 1 GROUP BY type ORDER BY count DESC")
         return rows
 
     @task("Get Total List", False)

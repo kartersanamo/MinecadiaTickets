@@ -58,7 +58,9 @@ class Questions(discord.ui.Modal):
     @task("Get Previous Ticket", False)
     async def get_previous_ticket(self, owner_id: int) -> discord.Embed:
         rows = execute(
-            f"SELECT name, number, reason, transcript, closed_at, closed_by, privated FROM tickets WHERE ownerID = '{owner_id}' AND active = 'False' ORDER BY CAST(closed_at AS INTEGER) DESC LIMIT 1"
+            "SELECT name, number, reason, transcript, closed_at, closed_by_id, privated FROM tickets "
+            "WHERE owner_id = %s AND is_active = 0 ORDER BY closed_at DESC LIMIT 1",
+            (owner_id,),
         )
         if not rows:
             return None
@@ -66,7 +68,7 @@ class Questions(discord.ui.Modal):
             embed = discord.Embed(
                 title=f"Recently Closed {rows[0]['name']}#{rows[0]['number']}",
                 description=(
-                    f"Closed by <@{rows[0]['closed_by']}> on <t:{rows[0]['closed_at']}:f> "
+                    f"Closed by <@{rows[0]['closed_by_id']}> on <t:{rows[0]['closed_at']}:f> "
                     f"(<t:{rows[0]['closed_at']}:R>)\nReason: Privated Ticket"
                 ),
                 color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
@@ -75,7 +77,7 @@ class Questions(discord.ui.Modal):
             embed = discord.Embed(
                 title=f"Recently Closed {rows[0]['name']}#{rows[0]['number']}",
                 description=(
-                    f"Closed by <@{rows[0]['closed_by']}> on <t:{rows[0]['closed_at']}:f> "
+                    f"Closed by <@{rows[0]['closed_by_id']}> on <t:{rows[0]['closed_at']}:f> "
                     f"(<t:{rows[0]['closed_at']}:R>)\nReason: {rows[0]['reason']}\n"
                     f"[Ticket Transcript]({rows[0]['transcript']})"
                 ),
@@ -125,7 +127,7 @@ class Questions(discord.ui.Modal):
             )
 
             rows = execute(
-                f"SELECT number FROM tickets WHERE channelID = '{interaction.channel.id}' LIMIT 1"
+                "SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (interaction.channel.id,)
             )
             if rows:
                 from services.ticket_creation_service import TicketCreationService as TicketSystem

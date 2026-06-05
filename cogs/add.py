@@ -13,7 +13,7 @@ class Add(commands.Cog):
         self.client: commands.Bot = client
     @task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
-        rows = execute(f"SELECT 1 FROM blacklists WHERE userID = {user.id} LIMIT 1")
+        rows = execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (user.id,))
         if rows:
             log_commands.warning(f"Failed to add {user} ({user.id}) to #{interaction.channel.name} ({interaction.channel.id}) as they are ticket blacklisted")
             await interaction.response.send_message(content = "`❌` Failed! You cannot add this player to the ticket as they are currently ticket blacklisted!", ephemeral = True)

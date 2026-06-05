@@ -14,22 +14,25 @@ class Oldest(commands.Cog):
     async def get_data_list(self, interaction: discord.Interaction, category: discord.CategoryChannel = None) -> list[str]:
         data: list = []
         bad_channels: list = []
-        rows = execute("SELECT channelID, opened_at FROM tickets WHERE active = 'True' ORDER BY opened_at")
+        rows = execute("SELECT channel_id, opened_at FROM tickets WHERE is_active = 1 ORDER BY opened_at")
         for row in rows:
-            channel = interaction.guild.get_channel(int(row['channelID']))
+            channel = interaction.guild.get_channel(int(row['channel_id']))
             if channel:
                 if category and channel.category_id == category.id:
                     data.append(f"{channel.mention} <t:{(int(float(row['opened_at'])))}:R>")
                 else:
                     data.append(f"{channel.mention} <t:{(int(float(row['opened_at'])))}:R>")
             else:
-                bad_channels.append(row['channelID'])
+                bad_channels.append(row['channel_id'])
         
         if bad_channels:
             from services.active_ticket_cache import active_ticket_cache
 
-            bad_channels_str = ', '.join(f"'{channelID}'" for channelID in bad_channels)
-            execute(f"UPDATE tickets SET active = 'False' WHERE channelID IN ({bad_channels_str})")
+            placeholders = ", ".join(["%s"] * len(bad_channels))
+            execute(
+                f"UPDATE tickets SET is_active = 0 WHERE channel_id IN ({placeholders})",
+                tuple(bad_channels),
+            )
             for channel_id in bad_channels:
                 active_ticket_cache.unregister(int(channel_id))
             log_tasks.warning(f"{len(bad_channels)} invalid channel IDs found and removed from the database {bad_channels}")

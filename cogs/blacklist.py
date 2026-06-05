@@ -22,16 +22,21 @@ class Blacklist(commands.Cog):
     @tasks.loop(minutes = 10)
     async def check_blacklists(self) -> None:
         current_time: int = int(time.time())
-        rows: list = execute(f"SELECT userID FROM blacklists WHERE whenToUnbl < '{current_time}'")
+        rows: list = execute(
+            "SELECT user_id FROM blacklists WHERE unblacklist_at < %s",
+            (current_time,),
+        )
         if rows:
-            user_ids: list = [str(row['userID']) for row in rows]
+            user_ids: list = [str(row['user_id']) for row in rows]
             log_tasks.info(f"Removing ticket blacklists {user_ids}")
-            user_ids_str: str = ', '.join(user_ids)
-            await self.remove_blacklists(user_ids_str)
+            await self.remove_blacklists(user_ids)
         
     @task("Remove Blacklists", False)
-    async def remove_blacklists(self, user_ids: str) -> None:
-        execute(f"DELETE FROM blacklists WHERE userID IN ({user_ids})")
+    async def remove_blacklists(self, user_ids: list[str]) -> None:
+        if not user_ids:
+            return
+        placeholders = ", ".join(["%s"] * len(user_ids))
+        execute(f"DELETE FROM blacklists WHERE user_id IN ({placeholders})", tuple(user_ids))
 
     @task("Get Unix", False)
     async def get_unix(self, length: str) -> int:
@@ -41,9 +46,9 @@ class Blacklist(commands.Cog):
 
     @task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
-        existing_row = execute(f"SELECT * FROM blacklists WHERE userID = {user.id}")
+        existing_row = execute("SELECT * FROM blacklists WHERE user_id = %s", (user.id,))
         if existing_row:
-            await self.remove_blacklists(str(user.id))
+            await self.remove_blacklists([str(user.id)])
             await self.send_embed(interaction, user, "unblacklisted")
             log_commands.info(f"{user} ({user.id}) has been unblacklisted from creating tickets by a staff member")
             return True
@@ -52,7 +57,10 @@ class Blacklist(commands.Cog):
     @task("Blacklist User", False)
     async def blacklist_user(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:
         unix = await self.get_unix(length)
-        execute(f"INSERT INTO blacklists(userID, reason, staffID, whenToUnbl, created_at) VALUES ('{user.id}', '{reason or 'N/A'}', '{interaction.user.id}', '{unix}', '{int(__import__('time').time())}')")
+        execute(
+            "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) VALUES (%s, %s, %s, %s, %s)",
+            (user.id, reason or "N/A", interaction.user.id, unix, int(__import__("time").time())),
+        )
         log_commands.info(f"Ticket blacklisted {user} ({user.id}) for {length}")
 
     @task("Send Embed", False)

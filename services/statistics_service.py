@@ -8,10 +8,10 @@ class StatisticsService:
         self._repo = repository or StatisticsRepository()
 
     async def get_statistic(self, user: discord.Member, statistic: str):
-        rows = await self._repo.find_row(user.id)
+        rows = self._repo.find_row(user.id)
         if rows:
             return rows[0][statistic]
-        await self._repo.insert_default_row(user.id)
+        self._repo.insert_default_row(user.id)
         return 0
 
 

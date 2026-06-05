@@ -39,13 +39,25 @@ class Move(commands.Cog):
     @task("Update Database", False)
     async def update_database(self, category_name: str, channel_id: int) -> None:
         if category_name == "Admin+ Check":
-            execute(f"UPDATE tickets SET privated = 'Admin' WHERE channelID = '{channel_id}'")
+            execute(
+                "UPDATE tickets SET privated = 'Admin' WHERE channel_id = %s",
+                (channel_id,),
+            )
         elif category_name == "Store Issue Tickets":
-            execute(f"UPDATE tickets SET type = '{category_name}', privated = 'Admin' WHERE channelID = '{channel_id}'")
+            execute(
+                "UPDATE tickets SET type = %s, privated = 'Admin' WHERE channel_id = %s",
+                (category_name, channel_id),
+            )
         elif category_name == "Management Contact":
-            execute(f"UPDATE tickets SET type = '{category_name}', privated = 'Management' WHERE channelID = '{channel_id}'")
+            execute(
+                "UPDATE tickets SET type = %s, privated = 'Management' WHERE channel_id = %s",
+                (category_name, channel_id),
+            )
         else:
-            execute(f"UPDATE tickets SET type = '{category_name}', privated = '' WHERE channelID = '{channel_id}'")
+            execute(
+                "UPDATE tickets SET type = %s, privated = '' WHERE channel_id = %s",
+                (category_name, channel_id),
+            )
 
     @task("Set Permissions", False)
     async def set_permissions(self, interaction: discord.Interaction, new_category_id: int) -> None:

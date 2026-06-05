@@ -16,7 +16,7 @@ class Logs(commands.Cog):
 
     @task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        row = await aexecute("SELECT COUNT(*) AS n FROM tickets WHERE active = %s", ("True",))
+        row = await aexecute("SELECT COUNT(*) AS n FROM tickets WHERE is_active = %s", (1,))
         if not row:
             return 0
         return int(row[0].get("n") or row[0].get("COUNT(*)") or 0)

@@ -69,7 +69,7 @@ class TicketCreationService:
 
     @task("Get Ticket Count", False)
     async def get_ticket_count(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets WHERE active = 'True'")
+        row = execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
         return int(row[0]["COUNT(*)"])
 
     @task("Check Verified", False)
@@ -88,7 +88,8 @@ class TicketCreationService:
     @task("Check 5 Tickets", False)
     async def check_5_tickets(self, interaction: discord.Interaction) -> str:
         row = execute(
-            f"SELECT COUNT(*) AS open_ticket_count FROM tickets WHERE ownerID = '{interaction.user.id}' AND active = 'True'"
+            "SELECT COUNT(*) AS open_ticket_count FROM tickets WHERE owner_id = %s AND is_active = 1",
+            (interaction.user.id,),
         )
         open_ticket_count = row[0]["open_ticket_count"]
         if open_ticket_count >= 5:
@@ -100,7 +101,10 @@ class TicketCreationService:
 
     @task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction) -> str:
-        row = execute(f"SELECT reason FROM blacklists WHERE userID = '{interaction.user.id}'")
+        row = execute(
+            "SELECT reason FROM blacklists WHERE user_id = %s",
+            (interaction.user.id,),
+        )
         if row:
             blacklist_reason = row[0]["reason"]
             log_tasks.warning(
@@ -137,12 +141,15 @@ class TicketCreationService:
     async def check_recent_open(self, interaction: discord.Interaction) -> str:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
-        row = execute(f"""
+        row = execute(
+            """
             SELECT opened_at FROM tickets
-            WHERE ownerID = '{interaction.user.id}'
+            WHERE owner_id = %s
             ORDER BY opened_at DESC
             LIMIT 1
-        """)
+            """,
+            (interaction.user.id,),
+        )
 
         if row:
             last_opened = float(row[0]["opened_at"])
@@ -157,12 +164,15 @@ class TicketCreationService:
     async def check_recent_closed(self, interaction: discord.Interaction) -> str:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
-        row = execute(f"""
+        row = execute(
+            """
             SELECT closed_at FROM tickets
-            WHERE ownerID = '{interaction.user.id}' AND active = 'False'
+            WHERE owner_id = %s AND is_active = 0
             ORDER BY closed_at DESC
             LIMIT 1
-        """)
+            """,
+            (interaction.user.id,),
+        )
 
         if row and row[0]["closed_at"]:
             last_closed = int(row[0]["closed_at"])
@@ -255,7 +265,17 @@ class TicketCreationService:
         elif "Management Contact" in ticket_type:
             privated = "Management"
         execute(
-            f"INSERT INTO tickets (channelID, ownerID, type, opened_at, number, active, closed_by, closed_at, reason, name, transcript, privated) VALUES ('{channel.id}', '{interaction.user.id}', '{category.name}', '{int(time.time())}', '{number}', 'True', ' ', ' ', ' ', ' ', ' ', '{privated}')"
+            "INSERT INTO tickets (channel_id, owner_id, type, opened_at, number, is_active, closed_by_id, closed_at, reason, name, transcript, privated) "
+            "VALUES (%s, %s, %s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s)",
+            (
+                channel.id,
+                interaction.user.id,
+                category.name,
+                int(time.time()),
+                number,
+                1,
+                privated or None,
+            ),
         )
         from services.active_ticket_cache import active_ticket_cache
 

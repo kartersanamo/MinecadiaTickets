@@ -203,10 +203,12 @@ class Close(commands.Cog):
         new_ticket_closed_stat: int = tickets_closed_stat + 1
 
         execute(
-            f"UPDATE tickets SET active = 'False', closed_by = '{closed_by_id}', closed_at = '{closed_at_timestamp}', reason = '{reason}', name = '{name}', transcript = '{link}' WHERE channelID = '{channel_id}'"
+            "UPDATE tickets SET is_active = 0, closed_by_id = %s, closed_at = %s, reason = %s, name = %s, transcript = %s WHERE channel_id = %s",
+            (closed_by_id, closed_at_timestamp, reason, name, link, channel_id),
         )
         execute(
-            f"UPDATE statistics SET tickets_closed = '{new_ticket_closed_stat}' WHERE user_ID = '{closed_by_id}'"
+            "UPDATE staff_statistics SET tickets_closed = %s WHERE user_id = %s",
+            (new_ticket_closed_stat, closed_by_id),
         )
         from services.active_ticket_cache import active_ticket_cache
 
@@ -215,10 +217,13 @@ class Close(commands.Cog):
             analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 
     @task("Fetch Ticket Info")
-    async def fetch_ticket_info(self, channelID: int) -> tuple:
+    async def fetch_ticket_info(self, channel_id: int) -> tuple:
         bot_account: discord.ClientUser = self.client.user
         info = (bot_account, bot_account.id, bot_account.mention, 0, "N/A", "0000", "Unknown", "", 0, "")
-        row = execute(f"SELECT number, opened_at, privated, type, ownerID FROM tickets WHERE channelID = '{channelID}'")
+        row = execute(
+            "SELECT number, opened_at, privated, type, owner_id FROM tickets WHERE channel_id = %s",
+            (channel_id,),
+        )
         if row:
             row = row[0]
             opened_timestamp: int = int(float(row["opened_at"]))
@@ -226,7 +231,7 @@ class Close(commands.Cog):
             ticket_number: str = row["number"]
             privated: str = row["privated"]
             ticket_type: str = row["type"]
-            owner: discord.Member = await self.client.fetch_user(int(row["ownerID"]))
+            owner: discord.Member = await self.client.fetch_user(int(row["owner_id"]))
             owner_id: int = owner.id
             owner_mention: str = owner.mention
             closed_at_timestamp: int = int(time.time())
@@ -237,7 +242,7 @@ class Close(commands.Cog):
 
     @task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets WHERE active = 'True'")
+        row = execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
         return int(row[0]['COUNT(*)'])
 
     @is_ticket()

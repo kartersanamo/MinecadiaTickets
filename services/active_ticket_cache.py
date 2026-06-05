@@ -29,13 +29,13 @@ class ActiveTicketCache:
 
     async def refresh(self) -> None:
         rows = await aexecute(
-            "SELECT channelID, ownerID FROM tickets WHERE active = %s",
-            ("True",),
+            "SELECT channel_id, owner_id FROM tickets WHERE is_active = %s",
+            (1,),
         )
         parsed: dict[int, str] = {}
         for row in rows:
             try:
-                parsed[int(row["channelID"])] = str(row["ownerID"])
+                parsed[int(row["channel_id"])] = str(row["owner_id"])
             except (KeyError, TypeError, ValueError):
                 continue
         async with self._lock:
