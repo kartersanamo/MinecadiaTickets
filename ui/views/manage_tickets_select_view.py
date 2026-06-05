@@ -1,6 +1,4 @@
-#from cogs.sendtickets import send_tickets_command
 import discord
-from core.config import ConfigManager
 from core.loggers import log_commands
 
 

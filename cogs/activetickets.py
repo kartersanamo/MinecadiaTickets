@@ -8,7 +8,7 @@ import asyncio
 import os
 from core.config import ConfigManager
 from core.decorators import task
-from core.loggers import log_commands, log_tasks
+from core.loggers import log_tasks
 
 
 class ActiveTickets(commands.Cog):

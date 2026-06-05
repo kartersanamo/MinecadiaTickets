@@ -13,7 +13,6 @@ import pytz
 from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
-from core.loggers import log_commands
 
 
 PAGE_SIZE = 25

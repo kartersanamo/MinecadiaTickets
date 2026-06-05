@@ -3,7 +3,6 @@ from discord import app_commands
 import discord
 from core.database import execute
 from core.decorators import task
-from core.loggers import log_commands
 from ui.views.paginator import Paginator
 
 

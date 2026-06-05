@@ -4,7 +4,6 @@ import asyncio
 import discord
 from core.config import ConfigManager
 from core.decorators import task
-from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 
 

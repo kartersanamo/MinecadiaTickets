@@ -5,7 +5,6 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
-import mysql.connector
 from mysql.connector import pooling
 
 from core.config import ConfigManager

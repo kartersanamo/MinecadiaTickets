@@ -1,9 +1,6 @@
-#from cogs.sendtickets import send_tickets_command
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import ConfigManager
-from core.loggers import log_commands
 from ui.views.manage_categories_view import ManageCategoriesView
 
 class ManageTickets(commands.Cog):

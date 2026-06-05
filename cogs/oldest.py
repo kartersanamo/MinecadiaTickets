@@ -1,10 +1,9 @@
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
-from core.loggers import log_commands, log_tasks
+from core.loggers import log_tasks
 from ui.views.paginator import Paginator
 
 

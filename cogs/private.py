@@ -5,7 +5,7 @@ import asyncio
 from core.config import ConfigManager
 from core.database import execute
 from core.decorators import task
-from core.loggers import log_commands, log_tasks
+from core.loggers import log_tasks
 from services.ticket_check_service import is_ticket
 
 class Private(commands.Cog):

@@ -1,6 +1,5 @@
 import discord
 
-from core.config import ConfigManager
 from core.loggers import log_tasks
 from ui.modals.questions import Questions
 

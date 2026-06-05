@@ -1,4 +1,3 @@
-#from cogs.sendtickets import send_tickets_command
 import discord
 import json
 from core.config import ConfigManager

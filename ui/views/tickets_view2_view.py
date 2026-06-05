@@ -1,6 +1,5 @@
 import discord
 import json
-from core.config import ConfigManager
 from services.ticket_creation_service import TicketCreationService as TicketSystem
 
 
