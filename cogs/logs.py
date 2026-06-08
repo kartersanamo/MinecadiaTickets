@@ -37,7 +37,7 @@ class Logs(commands.Cog):
         if interaction.type == discord.InteractionType.application_command:
             name = f"/{interaction.command.name}"
             try:
-                for option in interaction.data.get('options'):
+                for option in interaction.data.get('options') or []:
                     name += f" {option['name']}:'{option['value']}'"
             except KeyError:
                 pass
