@@ -283,24 +283,29 @@ class TicketCreationService:
 
         return channel
 
-    @task("New Ticket", False)
+    @task(action_name = "New Ticket", log = False)
     async def new_ticket(self, interaction: discord.Interaction, view: discord.ui.View) -> None:
-        embed = discord.Embed(
-            description=f"📖 Attempting to create a new ticket for {interaction.user.mention}",
-            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+        embed: discord.Embed = discord.Embed(
+            description = f"📖 Attempting to create a new ticket for {interaction.user.mention}",
+            color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        await interaction.response.send_message(embed = embed, ephemeral = True)
         start = time.perf_counter()
-        await interaction.message.edit(view=view)
-        result = await self.check(interaction)
+
+        if not interaction.message:
+            await interaction.response.send_message(content = "`❌` Failed to edit the original interaction message")
+        else:
+            await interaction.message.edit(view = view)
+
+        result = await self.check(interaction = interaction)
         if result:
-            embed = discord.Embed(
-                description=result,
-                color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+            embed: discord.Embed = discord.Embed(
+                description = result,
+                color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
             )
-            return await interaction.edit_original_response(embed=embed)
-        channel: discord.TextChannel = await self.create_ticket(interaction)
+            return await interaction.edit_original_response(embed = embed)
+
+        channel: discord.TextChannel = await self.create_ticket(interaction = interaction)
         ticket_count: int = await self.get_ticket_count()
-        log_tasks.info(
-            f"Created #{channel} ({channel.id}) in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}"
-        )
+        log_tasks.info(f"Created #{channel} ({channel.id}) {interaction.data.get("custom_id")} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")

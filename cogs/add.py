@@ -62,6 +62,5 @@ class Add(commands.Cog):
             await self.send_embed(interaction, user)
 
 
-
 async def setup(client: commands.Bot) -> None:
     await client.add_cog(Add(client))
