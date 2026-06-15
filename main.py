@@ -38,8 +38,8 @@ if _bots_env.exists():
     load_dotenv(dotenv_path = _bots_env)
 
 
-COG_FILES = [file.split(sep = ".")[0].title() for file in os.listdir(path = "cogs/") if file.endswith(".py")]
-    
+COG_FILES: list[str] = [file.split(sep = ".")[0].title() for file in os.listdir(path = "cogs/") if file.endswith(".py")]
+
 
 class Client(commands.Bot):
     def __init__(self) -> None:
@@ -80,7 +80,7 @@ class Client(commands.Bot):
     @task(action_name = "Update Presence")
     async def _update_presence(self) -> None:
         """Updates the bot's presence based on the configuration."""
-        presence = ConfigManager.get(key = "PRESENCE")
+        presence: str = ConfigManager.get(key = "PRESENCE")
         await self.change_presence(activity = discord.Game(name = presence))
         log_tasks.info(msg = f"Updated the bot's presence to {presence}")
 
@@ -97,6 +97,8 @@ class Client(commands.Bot):
             bot = self,
             config_guild_id=ConfigManager.get(key = "GUILD_ID"),
             log = log_tasks,
+            also_sync_global = False,
+            clear_global_after_guild = True
         )
 
     @task(action_name = "Start Dashboard HTTP")
@@ -109,7 +111,7 @@ class Client(commands.Bot):
     async def setup_hook(self) -> None:
         """Overrides the default setup_hook to perform asynchronous setup tasks before the bot is ready."""
         await wire_bot_async_setup(bot = self, bot_name = "Tickets", log_tasks = log_tasks)
-        self.app = BotApp.from_bot(bot = self)
+        self.app: BotApp = BotApp.from_bot(bot = self)
         await self._setup_cogs()
         await self._register_analytics()
         await self._add_views()
@@ -191,7 +193,7 @@ async def ticketsreload(interaction: discord.Interaction, cog: str) -> None:
     """
     await tickets_reload_command(interaction = interaction, cog = cog)
 
-TOKEN = os.getenv(key = "DISCORD_TOKEN")
+TOKEN: str | None = os.getenv(key = "DISCORD_TOKEN")
 if not TOKEN:
     raise ValueError("Set DISCORD_TOKEN in .env")
 

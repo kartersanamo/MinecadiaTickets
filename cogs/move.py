@@ -7,6 +7,7 @@ from core.database import execute
 from core.decorators import task
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
+from services.ticket_channel_ordering import get_ticket_position
 
 
 class Move(commands.Cog):
@@ -34,7 +35,8 @@ class Move(commands.Cog):
 
     @task("Move Categories", False)
     async def move_categories(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
-        await interaction.channel.edit(category = category)
+        position = get_ticket_position(category, interaction.channel)
+        await interaction.channel.edit(category = category, position = position)
 
     @task("Update Database", False)
     async def update_database(self, category_name: str, channel_id: int) -> None:

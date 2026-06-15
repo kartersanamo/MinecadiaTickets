@@ -5,6 +5,7 @@ import discord
 from core.config import ConfigManager
 from core.decorators import task
 from services.ticket_check_service import is_ticket
+from services.ticket_channel_ordering import get_ticket_position
 
 
 class Rename(commands.Cog):
@@ -35,7 +36,9 @@ class Rename(commands.Cog):
     async def rename_command(self, interaction: discord.Interaction, name: str) -> None:
         old_name: str = interaction.channel.name
         await asyncio.wait_for(self.edit_channel_name(interaction.channel, name), timeout = 2.0)
-        await interaction.channel.edit(name = name)
+        if interaction.channel.category is not None:
+            position = get_ticket_position(interaction.channel.category, interaction.channel)
+            await interaction.channel.edit(position = position)
         await self.send_embed(interaction, old_name)
 
 
