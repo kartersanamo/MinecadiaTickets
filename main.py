@@ -49,13 +49,14 @@ class Client(commands.Bot):
     @TaskDecorator.task(action_name = "Setup Cogs")
     async def _setup_cogs(self) -> None:
         """Loads all cogs in the cogs directory and the active ticket cache service."""
-        try:
-            await self.load_extension(name = "services.active_ticket_cache")
-            for ext in COG_FILES:
-                await self.load_extension(name = "cogs." + ext.lower())
-        except (commands.ExtensionNotLoaded, commands.ExtensionNotFound, commands.NoEntryPointError, commands.ExtensionFailed) as exc:
-            log_commands.error(msg = f"Failed to load extension {exc}")    
-        log_tasks.info(msg = f"Loaded {len(COG_FILES)} cogs {', '.join(ext + '.py' for ext in COG_FILES)}")
+        loaded: list[str] = []
+        for ext in ("services.active_ticket_cache", *(f"cogs.{name.lower()}" for name in COG_FILES)):
+            try:
+                await self.load_extension(name=ext)
+                loaded.append(ext)
+            except (commands.ExtensionNotLoaded, commands.ExtensionNotFound, commands.NoEntryPointError, commands.ExtensionFailed) as exc:
+                log_commands.error(msg=f"Failed to load extension {ext}: {exc}")
+        log_tasks.info(msg=f"Loaded {len(loaded)} extensions: {', '.join(loaded)}")
 
     @TaskDecorator.task(action_name = "Register Analytics")
     async def _register_analytics(self) -> None:

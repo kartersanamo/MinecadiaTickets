@@ -47,7 +47,7 @@ class DatabasePool:
             )
         return self._pool
 
-    def execute(self, query: str, params: tuple | None = None) -> list:
+    def _execute_query(self, query: str, params: tuple | None = None) -> list:
         rows: list = []
         connection = None
         try:
@@ -72,7 +72,7 @@ class DatabasePool:
     @classmethod
     def execute(cls, query: str, params: tuple | None = None) -> list:
         """Blocking query — use only from threads or sync code."""
-        return cls.get().execute(query, params)
+        return cls.get()._execute_query(query, params)
 
     @classmethod
     async def aexecute(cls, query: str, params: tuple | None = None) -> list:

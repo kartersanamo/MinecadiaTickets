@@ -66,10 +66,6 @@ class ActiveTicketCacheCog(commands.Cog):
     async def _before_refresh(self) -> None:
         await self.bot.wait_until_ready()
 
-    @staticmethod
-    async def setup(bot: commands.Bot) -> None:
-        await bot.add_cog(ActiveTicketCacheCog(bot))
-
 
 async def setup(bot: commands.Bot) -> None:
-    await ActiveTicketCacheCog.setup(bot)
+    await bot.add_cog(ActiveTicketCacheCog(bot))
