@@ -4,3 +4,7 @@
 .venv/
 logs/
 .vscode/*
+
+# Auto-generated diagrams (regenerate: python3 ../scripts/generate_bot_diagrams.py MinecadiaTickets)
+docs/diagrams/*
+!docs/diagrams/.gitkeep
