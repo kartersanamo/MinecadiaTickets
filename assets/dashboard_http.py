@@ -3,42 +3,58 @@ from __future__ import annotations
 
 import logging
 import os
-
 from typing import TYPE_CHECKING
-import discord
 
+import discord
 from aiohttp import web
-from core.database import execute
+
+from core.config import ConfigManager
+from core.database import DatabasePool
+from core.errors.messages import ErrorMessages
 
 if TYPE_CHECKING:
     from discord.ext import commands
 
 log = logging.getLogger("dashboard_http")
 
-_server: web.AppRunner | None = None
 
+class DashboardHttp:
+    _server: web.AppRunner | None = None
 
-def _api_secret() -> str | None:
-    return os.environ.get("TICKETS_BOT_API_SECRET") or os.environ.get(
-        "CONTROL_API_SECRET"
-    )
+    @staticmethod
+    def _api_secret() -> str | None:
+        return os.environ.get("TICKETS_BOT_API_SECRET") or os.environ.get("CONTROL_API_SECRET")
 
+    @staticmethod
+    def _api_port() -> int:
+        return int(os.environ.get("TICKETS_BOT_API_PORT", "8788"))
 
-def _api_port() -> int:
-    return int(os.environ.get("TICKETS_BOT_API_PORT", "8788"))
+    def __init__(self, client: "commands.Bot", secret: str) -> None:
+        self._client = client
+        self._secret = secret
 
-
-async def start_dashboard_http(client: "commands.Bot") -> None:
-    global _server
-    secret = _api_secret()
-    if not secret:
-        log.warning(
-            "TICKETS_BOT_API_SECRET / CONTROL_API_SECRET not set — dashboard close API disabled"
+    def _ticket_embed(self, description: str) -> discord.Embed:
+        data = self._client.data
+        embed = discord.Embed(
+            description=description,
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
-        return
+        logo = data.get("LOGO")
+        logo_url = None
+        if isinstance(logo, str) and logo.startswith(("http://", "https://")):
+            logo_url = logo
+        embed.set_footer(text=data.get("FOOTER", "Minecadia Tickets Bot"), icon_url=logo_url)
+        return embed
 
-    async def close_ticket(request: web.Request) -> web.Response:
-        if request.headers.get("X-Tickets-Key") != secret:
+    @staticmethod
+    def _extract_snowflake(raw: str) -> int | None:
+        token = str(raw or "").strip()
+        if token.startswith("<@") and token.endswith(">"):
+            token = token[2:-1].lstrip("!")
+        return int(token) if token.isdigit() else None
+
+    async def close_ticket(self, request: web.Request) -> web.Response:
+        if request.headers.get("X-Tickets-Key") != self._secret:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
         try:
@@ -53,31 +69,25 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
             )
 
         if len(reason) < 2:
-            return web.json_response(
-                {"error": "Reason must be at least 2 characters"},
-                status=400,
-            )
+            return web.json_response({"error": "Reason must be at least 2 characters"}, status=400)
 
         guild_id = int(ConfigManager.get("GUILD_ID"))
-        guild = client.get_guild(guild_id)
+        guild = self._client.get_guild(guild_id)
         if guild is None:
             return web.json_response({"error": "Guild not available"}, status=503)
 
         channel = guild.get_channel(channel_id)
         if channel is None or not hasattr(channel, "history"):
-            return web.json_response(
-                {"error": "Ticket channel not found"},
-                status=404,
-            )
+            return web.json_response({"error": "Ticket channel not found"}, status=404)
 
-        cog = client.get_cog("Close")
+        cog = self._client.get_cog("Close")
         if cog is None:
             return web.json_response({"error": "Close cog not loaded"}, status=503)
 
-        closed_by_id = guild.get_member(closed_by_id)
-        if closed_by_id is None:
+        closer = guild.get_member(closed_by_id)
+        if closer is None:
             try:
-                closed_by_id = await guild.fetch_member(closed_by_id)
+                closer = await guild.fetch_member(closed_by_id)
             except Exception:
                 return web.json_response(
                     {
@@ -87,42 +97,15 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 )
 
         try:
-            await cog.close_ticket_channel(
-                guild,
-                channel,
-                closed_by_id,
-                reason,
-            )
+            await cog.close_ticket_channel(guild, channel, closer, reason)
         except Exception as exc:
             log.exception("Dashboard close failed for %s", channel_id)
-            from core.errors.messages import user_message_for
-
-            return web.json_response({"error": user_message_for(exc)}, status=500)
+            return web.json_response({"error": ErrorMessages.user_message_for(exc)}, status=500)
 
         return web.json_response({"ok": True})
 
-    def _ticket_embed(description: str) -> "discord.Embed":
-        data = client.data
-        embed = discord.Embed(
-            description=description,
-            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
-        )
-        logo = data.get("LOGO")
-        logo_url = None
-        if isinstance(logo, str):
-            if logo.startswith(("http://", "https://")):
-                logo_url = logo
-        embed.set_footer(text=data.get("FOOTER", "Minecadia Tickets Bot"), icon_url=logo_url)
-        return embed
-
-    def _extract_snowflake(raw: str) -> int | None:
-        token = str(raw or "").strip()
-        if token.startswith("<@") and token.endswith(">"):
-            token = token[2:-1].lstrip("!")
-        return int(token) if token.isdigit() else None
-
-    async def execute_ticket_command(request: web.Request) -> web.Response:
-        if request.headers.get("X-Tickets-Key") != secret:
+    async def execute_ticket_command(self, request: web.Request) -> web.Response:
+        if request.headers.get("X-Tickets-Key") != self._secret:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
             body = await request.json()
@@ -136,7 +119,7 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 status=400,
             )
 
-        guild = client.get_guild(int(ConfigManager.get("GUILD_ID")))
+        guild = self._client.get_guild(int(ConfigManager.get("GUILD_ID")))
         if guild is None:
             return web.json_response({"error": "Guild not available"}, status=503)
 
@@ -154,12 +137,12 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
         if channel.category is None or channel.category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             return web.json_response({"error": "This channel is not a ticket"}, status=400)
 
-        close_cog = client.get_cog("Close")
-        rename_cog = client.get_cog("Rename")
-        add_cog = client.get_cog("Add")
-        remove_cog = client.get_cog("Remove")
-        move_cog = client.get_cog("Move")
-        private_cog = client.get_cog("Private")
+        close_cog = self._client.get_cog("Close")
+        rename_cog = self._client.get_cog("Rename")
+        add_cog = self._client.get_cog("Add")
+        remove_cog = self._client.get_cog("Remove")
+        move_cog = self._client.get_cog("Move")
+        private_cog = self._client.get_cog("Private")
 
         try:
             if command == "close":
@@ -178,44 +161,50 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                     return web.json_response({"error": "Usage: /rename <new-channel-name>"}, status=400)
                 old_name = channel.name
                 await rename_cog.edit_channel_name(channel, new_name[:100])
-                await channel.send(embed=_ticket_embed(
-                    f"{actor.mention} has changed the ticket name from **{old_name}** to **{channel.name}**."
-                ))
+                await channel.send(
+                    embed=self._ticket_embed(
+                        f"{actor.mention} has changed the ticket name from **{old_name}** to **{channel.name}**."
+                    )
+                )
                 return web.json_response({"ok": True, "command": command, "detail": f"Renamed to {channel.name}"})
 
             if command == "add":
                 if add_cog is None:
                     return web.json_response({"error": "Add cog not loaded"}, status=503)
-                user_id = _extract_snowflake(args)
+                user_id = self._extract_snowflake(args)
                 if not user_id:
                     return web.json_response({"error": "Usage: /add <user-id-or-mention>"}, status=400)
                 member = guild.get_member(user_id) or await guild.fetch_member(user_id)
                 if member is None:
                     return web.json_response({"error": "User not found"}, status=404)
-                rows = execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (member.id,))
+                rows = DatabasePool.execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (member.id,))
                 if rows:
                     return web.json_response({"error": "User is ticket blacklisted"}, status=400)
                 if member.is_timed_out():
                     return web.json_response({"error": "User is timed out"}, status=400)
                 await add_cog.set_permissions(channel, member)
-                await channel.send(embed=_ticket_embed(
-                    f"{actor.mention} has added {member.mention} to the ticket {channel.mention}"
-                ))
+                await channel.send(
+                    embed=self._ticket_embed(
+                        f"{actor.mention} has added {member.mention} to the ticket {channel.mention}"
+                    )
+                )
                 return web.json_response({"ok": True, "command": command, "detail": f"Added {member.id}"})
 
             if command == "remove":
                 if remove_cog is None:
                     return web.json_response({"error": "Remove cog not loaded"}, status=503)
-                user_id = _extract_snowflake(args)
+                user_id = self._extract_snowflake(args)
                 if not user_id:
                     return web.json_response({"error": "Usage: /remove <user-id-or-mention>"}, status=400)
                 member = guild.get_member(user_id) or await guild.fetch_member(user_id)
                 if member is None:
                     return web.json_response({"error": "User not found"}, status=404)
                 await remove_cog.remove_permissions(channel, member)
-                await channel.send(embed=_ticket_embed(
-                    f"{actor.mention} has removed {member.mention} from the ticket {channel.mention}"
-                ))
+                await channel.send(
+                    embed=self._ticket_embed(
+                        f"{actor.mention} has removed {member.mention} from the ticket {channel.mention}"
+                    )
+                )
                 return web.json_response({"ok": True, "command": command, "detail": f"Removed {member.id}"})
 
             if command == "move":
@@ -231,9 +220,9 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                         category = ch
                 if category is None:
                     lowered = target.lower()
-                    for c in guild.categories:
-                        if c.name.lower() == lowered:
-                            category = c
+                    for cat in guild.categories:
+                        if cat.name.lower() == lowered:
+                            category = cat
                             break
                 if category is None:
                     return web.json_response({"error": "Target category not found"}, status=404)
@@ -251,9 +240,9 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
                 if staff_team:
                     await channel.set_permissions(staff_team, view_channel=False)
-                await channel.send(embed=_ticket_embed(
-                    f"{actor.mention} has moved this ticket to **{category.name}**"
-                ))
+                await channel.send(
+                    embed=self._ticket_embed(f"{actor.mention} has moved this ticket to **{category.name}**")
+                )
                 return web.json_response({"ok": True, "command": command, "detail": f"Moved to {category.name}"})
 
             if command in ("private", "management"):
@@ -279,31 +268,38 @@ async def start_dashboard_http(client: "commands.Bot") -> None:
                 staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
                 if staff_team:
                     await channel.set_permissions(staff_team, view_channel=False)
-                await channel.send(embed=_ticket_embed(f"{actor.mention} {desc}"))
+                await channel.send(embed=self._ticket_embed(f"{actor.mention} {desc}"))
                 return web.json_response({"ok": True, "command": command, "detail": f"{command} applied"})
 
             return web.json_response({"error": "Unknown ticket command"}, status=400)
         except Exception as exc:
             log.exception("Dashboard ticket-command failed for %s/%s", channel_id, command)
-            from core.errors.messages import user_message_for
+            return web.json_response({"error": ErrorMessages.user_message_for(exc)}, status=500)
 
-            return web.json_response({"error": user_message_for(exc)}, status=500)
+    @classmethod
+    async def start(cls, client: "commands.Bot") -> None:
+        secret = cls._api_secret()
+        if not secret:
+            log.warning(
+                "TICKETS_BOT_API_SECRET / CONTROL_API_SECRET not set — dashboard close API disabled"
+            )
+            return
 
-    app = web.Application()
-    app.router.add_post("/close-ticket", close_ticket)
-    app.router.add_post("/ticket-command", execute_ticket_command)
-    app.router.add_get("/health", lambda _: web.json_response({"ok": True}))
+        handler = cls(client, secret)
+        app = web.Application()
+        app.router.add_post("/close-ticket", handler.close_ticket)
+        app.router.add_post("/ticket-command", handler.execute_ticket_command)
+        app.router.add_get("/health", lambda _: web.json_response({"ok": True}))
 
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "127.0.0.1", _api_port())
-    await site.start()
-    _server = runner
-    log.info("Dashboard HTTP listening on 127.0.0.1:%s", _api_port())
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", cls._api_port())
+        await site.start()
+        cls._server = runner
+        log.info("Dashboard HTTP listening on 127.0.0.1:%s", cls._api_port())
 
-
-async def stop_dashboard_http() -> None:
-    global _server
-    if _server is not None:
-        await _server.cleanup()
-        _server = None
+    @classmethod
+    async def stop(cls) -> None:
+        if cls._server is not None:
+            await cls._server.cleanup()
+            cls._server = None

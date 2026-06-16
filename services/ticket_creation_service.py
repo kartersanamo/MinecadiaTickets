@@ -6,8 +6,8 @@ import aiohttp
 import discord
 
 from core.config import ConfigManager
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_tasks
 
 LOGO = "assets/Logo.png"
@@ -17,7 +17,7 @@ class TicketCreationService:
     def __init__(self):
         self.tickets = ConfigManager.tickets()
 
-    @task("Check Cooldown Bypass", False)
+    @TaskDecorator.task("Check Cooldown Bypass", False)
     async def has_ticket_cooldown_bypass(self, interaction: discord.Interaction) -> bool:
         role_ids = ConfigManager.get("ROLE_IDS", {})
         bypass_ids = {
@@ -67,12 +67,12 @@ class TicketCreationService:
         except Exception as e:
             log_tasks.warning(f"Dashboard new-ticket notify error: {e}")
 
-    @task("Get Ticket Count", False)
+    @TaskDecorator.task("Get Ticket Count", False)
     async def get_ticket_count(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
+        row = DatabasePool.execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
         return int(row[0]["COUNT(*)"])
 
-    @task("Check Verified", False)
+    @TaskDecorator.task("Check Verified", False)
     async def check_verified(self, interaction: discord.Interaction) -> str:
         role = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["VERIFIED_ROLE_ID"])
         if role not in interaction.user.roles:
@@ -85,9 +85,9 @@ class TicketCreationService:
             return f"`❌` You are not verified! Go to the {channel.mention} channel and verify yourself first."
         return None
 
-    @task("Check 5 Tickets", False)
+    @TaskDecorator.task("Check 5 Tickets", False)
     async def check_5_tickets(self, interaction: discord.Interaction) -> str:
-        row = execute(
+        row = DatabasePool.execute(
             "SELECT COUNT(*) AS open_ticket_count FROM tickets WHERE owner_id = %s AND is_active = 1",
             (interaction.user.id,),
         )
@@ -99,9 +99,9 @@ class TicketCreationService:
             return "`❌` Failed! You already have **5** tickets open!"
         return None
 
-    @task("Check Blacklisted", False)
+    @TaskDecorator.task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction) -> str:
-        row = execute(
+        row = DatabasePool.execute(
             "SELECT reason FROM blacklists WHERE user_id = %s",
             (interaction.user.id,),
         )
@@ -113,7 +113,7 @@ class TicketCreationService:
             return f"`❌` You are currently **blacklisted** from creating tickets for the following reason\n```{blacklist_reason}```"
         return None
 
-    @task("Check Disabled", False)
+    @TaskDecorator.task("Check Disabled", False)
     async def check_disabled(self, interaction: discord.Interaction) -> str:
         with open("assets/tickets.json", "r") as file:
             info = json.load(file)
@@ -137,11 +137,11 @@ class TicketCreationService:
 
         return None
 
-    @task("Check Recent Open", False)
+    @TaskDecorator.task("Check Recent Open", False)
     async def check_recent_open(self, interaction: discord.Interaction) -> str:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
-        row = execute(
+        row = DatabasePool.execute(
             """
             SELECT opened_at FROM tickets
             WHERE owner_id = %s
@@ -160,11 +160,11 @@ class TicketCreationService:
                 return "`❌` You're opening tickets too fast! Please try again later."
         return None
 
-    @task("Check Recent Closed", False)
+    @TaskDecorator.task("Check Recent Closed", False)
     async def check_recent_closed(self, interaction: discord.Interaction) -> str:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
-        row = execute(
+        row = DatabasePool.execute(
             """
             SELECT closed_at FROM tickets
             WHERE owner_id = %s AND is_active = 0
@@ -183,7 +183,7 @@ class TicketCreationService:
                 return "`❌` Your last ticket was just closed! Please try again later."
         return None
 
-    @task("Check", False)
+    @TaskDecorator.task("Check", False)
     async def check(self, interaction: discord.Interaction):
         check_functions: list = [
             self.check_verified,
@@ -201,12 +201,12 @@ class TicketCreationService:
 
         return None
 
-    @task("Get Ticket Number", False)
+    @TaskDecorator.task("Get Ticket Number", False)
     async def get_number(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets")
+        row = DatabasePool.execute("SELECT COUNT(*) FROM tickets")
         return int(row[0]["COUNT(*)"]) + 1
 
-    @task("Create Ticket", False)
+    @TaskDecorator.task("Create Ticket", False)
     async def create_ticket(self, interaction: discord.Interaction) -> discord.TextChannel:
         custom_id = interaction.data.get("custom_id")
         ticket_type = interaction.data.get("values")[0]
@@ -264,7 +264,7 @@ class TicketCreationService:
             privated = "Admin"
         elif "Management Contact" in ticket_type:
             privated = "Management"
-        execute(
+        DatabasePool.execute(
             "INSERT INTO tickets (channel_id, owner_id, type, opened_at, number, is_active, closed_by_id, closed_at, reason, name, transcript, privated) "
             "VALUES (%s, %s, %s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s)",
             (
@@ -283,7 +283,7 @@ class TicketCreationService:
 
         return channel
 
-    @task(action_name = "New Ticket")
+    @TaskDecorator.task(action_name = "New Ticket")
     async def new_ticket(self, interaction: discord.Interaction, view: discord.ui.View) -> None:
         embed: discord.Embed = discord.Embed(
             description = f"📖 Attempting to create a new ticket for {interaction.user.mention}",

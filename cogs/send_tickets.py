@@ -12,7 +12,7 @@ from discord import app_commands
 from typing import Literal
 import discord
 from core.config import ConfigManager
-from core.decorators import task
+from core.decorators import TaskDecorator
 from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
 from ui.views.tickets_view2_view import TicketsView2
@@ -26,7 +26,7 @@ class TicketsSend(commands.Cog):
     async def send_tickets(self, interaction: discord.Interaction, option: Literal["Tickets"], channel: discord.TextChannel = None) -> None:
         await self.send_tickets_command(interaction, option, channel if channel else interaction.channel)
 
-    @task("SendTickets Command", True)
+    @TaskDecorator.task("SendTickets Command", True)
     async def send_tickets_command(self, interaction: discord.Interaction, option: str, channel: discord.TextChannel) -> None:
         None if interaction.response.is_done() else await interaction.response.send_message(content = "`🔃` Sending your message...", ephemeral = True)
 

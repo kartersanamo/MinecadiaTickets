@@ -12,21 +12,21 @@ from discord import app_commands
 import discord
 import asyncio
 from core.config import ConfigManager
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
-from services.ticket_channel_ordering import get_ticket_position
+from services.ticket_channel_ordering import TicketChannelOrdering
 
 
 class Move(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
-    @task("Defer Response", False)
+    @TaskDecorator.task("Defer Response", False)
     async def defer_response(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
 
-    @task("Check Blacklisted", False)
+    @TaskDecorator.task("Check Blacklisted", False)
     async def check_blacklisted_category(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> bool:
         if category.id in ConfigManager.get('BLACKLISTED_MOVE_CATEGORIES'):
             log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to move a ticket to a blacklisted category {category} ({category.id})")
@@ -34,7 +34,7 @@ class Move(commands.Cog):
             return True
         return False
 
-    @task("Check Category", False)
+    @TaskDecorator.task("Check Category", False)
     async def check_ticket_category(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> bool:
         if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to move a ticket to a non-ticket category {category} ({category.id})")
@@ -42,35 +42,35 @@ class Move(commands.Cog):
             return True
         return False
 
-    @task("Move Categories", False)
+    @TaskDecorator.task("Move Categories", False)
     async def move_categories(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
-        position = get_ticket_position(category, interaction.channel)
+        position = TicketChannelOrdering.get_ticket_position(category, interaction.channel)
         await interaction.channel.edit(category = category, position = position)
 
-    @task("Update Database", False)
+    @TaskDecorator.task("Update Database", False)
     async def update_database(self, category_name: str, channel_id: int) -> None:
         if category_name == "Admin+ Check":
-            execute(
+            DatabasePool.execute(
                 "UPDATE tickets SET privated = 'Admin' WHERE channel_id = %s",
                 (channel_id,),
             )
         elif category_name == "Store Issue Tickets":
-            execute(
+            DatabasePool.execute(
                 "UPDATE tickets SET type = %s, privated = 'Admin' WHERE channel_id = %s",
                 (category_name, channel_id),
             )
         elif category_name == "Management Contact":
-            execute(
+            DatabasePool.execute(
                 "UPDATE tickets SET type = %s, privated = 'Management' WHERE channel_id = %s",
                 (category_name, channel_id),
             )
         else:
-            execute(
+            DatabasePool.execute(
                 "UPDATE tickets SET type = %s, privated = '' WHERE channel_id = %s",
                 (category_name, channel_id),
             )
 
-    @task("Set Permissions", False)
+    @TaskDecorator.task("Set Permissions", False)
     async def set_permissions(self, interaction: discord.Interaction, new_category_id: int) -> None:
         permissions = interaction.channel.overwrites.items()
         while interaction.channel.category.id != new_category_id:
@@ -82,7 +82,7 @@ class Move(commands.Cog):
         staff_team = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         await interaction.channel.set_permissions(staff_team, view_channel = False)
 
-    @task("Send Embed", False)
+    @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, category_name: str) -> None:
         confirmation_embed = discord.Embed(
             description = f"{interaction.user.mention} has moved this ticket to **{category_name}**", 
@@ -99,7 +99,7 @@ class Move(commands.Cog):
     async def move(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
         await self.move_command(interaction, category)
 
-    @task("Move Command", True)
+    @TaskDecorator.task("Move Command", True)
     async def move_command(self, interaction, category) -> None:
         blacklisted_category = await self.check_blacklisted_category(interaction, category)
         not_a_ticket_category = await self.check_ticket_category(interaction, category) 

@@ -1,6 +1,6 @@
 import discord
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_tasks
 from ui.views.paginator import Paginator
 
@@ -12,9 +12,9 @@ class TicketLogs(discord.ui.View):
     async def request(self, interaction: discord.Interaction, Button: discord.ui.Button):
         await self.request_tickets(interaction, Button)
     
-    @task("Get Data", False)
+    @TaskDecorator.task("Get Data", False)
     async def get_data(self, user_id: int):
-        rows = execute(
+        rows = DatabasePool.execute(
             "SELECT opened_at, name, type, transcript, reason FROM tickets WHERE owner_id = %s AND is_active = 0 ORDER BY opened_at",
             (user_id,),
         )
@@ -36,7 +36,7 @@ class TicketLogs(discord.ui.View):
         
         return data
 
-    @task("Paingate Send", False)
+    @TaskDecorator.task("Paingate Send", False)
     async def paginate_send(self, interaction: discord.Interaction, data: list[str]):
         paginate = Paginator()
         paginate.title = f"{interaction.user.name}'s Tickets"
@@ -44,7 +44,7 @@ class TicketLogs(discord.ui.View):
         paginate.data = data
         await paginate.send(interaction)
 
-    @task("Request Tickets", False)
+    @TaskDecorator.task("Request Tickets", False)
     async def request_tickets(self, interaction: discord.Interaction, Button: discord.ui.Button):
         await interaction.response.send_message(content = "...", ephemeral = True)
 

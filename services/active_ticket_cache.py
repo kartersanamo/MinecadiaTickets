@@ -6,7 +6,7 @@ from typing import Optional
 
 from discord.ext import commands, tasks
 
-from core.database import aexecute
+from core.database import DatabasePool
 
 log = logging.getLogger("Tasks")
 
@@ -28,7 +28,7 @@ class ActiveTicketCache:
         self._channels.pop(int(channel_id), None)
 
     async def refresh(self) -> None:
-        rows = await aexecute(
+        rows = await DatabasePool.aexecute(
             "SELECT channel_id, owner_id FROM tickets WHERE is_active = %s",
             (1,),
         )
@@ -66,6 +66,10 @@ class ActiveTicketCacheCog(commands.Cog):
     async def _before_refresh(self) -> None:
         await self.bot.wait_until_ready()
 
+    @staticmethod
+    async def setup(bot: commands.Bot) -> None:
+        await bot.add_cog(ActiveTicketCacheCog(bot))
+
 
 async def setup(bot: commands.Bot) -> None:
-    await bot.add_cog(ActiveTicketCacheCog(bot))
+    await ActiveTicketCacheCog.setup(bot)

@@ -12,16 +12,16 @@ from discord import app_commands
 import asyncio
 import discord
 from core.config import ConfigManager
-from core.decorators import task
+from core.decorators import TaskDecorator
 from services.ticket_check_service import is_ticket
-from services.ticket_channel_ordering import get_ticket_position
+from services.ticket_channel_ordering import TicketChannelOrdering
 
 
 class Rename(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
 
-    @task("Send Embed", False)
+    @TaskDecorator.task("Send Embed", False)
     async def send_embed(
         self,
         interaction: discord.Interaction,
@@ -50,7 +50,7 @@ class Rename(commands.Cog):
         await interaction.response.defer()
         await self.rename_command(interaction, name)
 
-    @task("Rename Command", True)
+    @TaskDecorator.task("Rename Command", True)
     async def rename_command(self, interaction: discord.Interaction, name: str) -> None:
         channel: discord.TextChannel = interaction.channel
         old_name: str = channel.name
@@ -59,7 +59,7 @@ class Rename(commands.Cog):
 
         if channel.category is not None:
             position = await asyncio.to_thread(
-                get_ticket_position,
+                TicketChannelOrdering.get_ticket_position,
                 channel.category,
                 channel,
             )

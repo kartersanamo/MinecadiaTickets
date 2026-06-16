@@ -5,31 +5,30 @@ import logging
 
 from discord.ext import commands
 
-from core.errors.discord_handlers import (
-    install_asyncio_exception_handler,
-    install_error_handlers,
-)
+from core.errors.discord_handlers import DiscordErrorHandlers
 
 
-def wire_bot(
-    bot: commands.Bot,
-    *,
-    bot_name: str,
-    log_commands: logging.Logger,
-    log_tasks: logging.Logger,
-) -> None:
-    install_error_handlers(
-        bot,
-        bot_name=bot_name,
-        log_commands=log_commands,
-        log_tasks=log_tasks,
-    )
+class ErrorSetup:
+    @staticmethod
+    def wire_bot(
+        bot: commands.Bot,
+        *,
+        bot_name: str,
+        log_commands: logging.Logger,
+        log_tasks: logging.Logger,
+    ) -> None:
+        DiscordErrorHandlers.install_error_handlers(
+            bot,
+            bot_name=bot_name,
+            log_commands=log_commands,
+            log_tasks=log_tasks,
+        )
 
-
-async def wire_bot_async_setup(
-    bot: commands.Bot,
-    *,
-    bot_name: str,
-    log_tasks: logging.Logger,
-) -> None:
-    install_asyncio_exception_handler(bot, log_tasks=log_tasks, bot_name=bot_name)
+    @staticmethod
+    async def wire_bot_async_setup(
+        bot: commands.Bot,
+        *,
+        bot_name: str,
+        log_tasks: logging.Logger,
+    ) -> None:
+        DiscordErrorHandlers.install_asyncio_exception_handler(bot, log_tasks=log_tasks, bot_name=bot_name)

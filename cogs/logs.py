@@ -10,8 +10,8 @@ License: MIT
 from discord.ext import commands, tasks
 import discord
 from core.config import ConfigManager
-from core.database import aexecute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_commands
 
 
@@ -23,14 +23,14 @@ class Logs(commands.Cog):
         # await self.update_ticket_vc_count_loop.start() Turned off due to rate limits
         pass
 
-    @task("Get Ticket Count")
+    @TaskDecorator.task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        row = await aexecute("SELECT COUNT(*) AS n FROM tickets WHERE is_active = %s", (1,))
+        row = await DatabasePool.aexecute("SELECT COUNT(*) AS n FROM tickets WHERE is_active = %s", (1,))
         if not row:
             return 0
         return int(row[0].get("n") or row[0].get("COUNT(*)") or 0)
 
-    @task("Update Ticket VC Count")
+    @TaskDecorator.task("Update Ticket VC Count")
     async def update_ticket_vc_count(self) -> None:
         new_ticket_count: int = await self.get_ticket_count()
         guild = self.client.get_guild(ConfigManager.get('GUILD_ID'))

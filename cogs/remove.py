@@ -11,32 +11,32 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 from core.config import ConfigManager
-from core.decorators import task
+from core.decorators import TaskDecorator
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 
 class Remove(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
-    @task("Get Role Level", False)
+    @TaskDecorator.task("Get Role Level", False)
     async def get_role_level(self, role_id: int) -> int:
         for level, roles in enumerate(ConfigManager.get('ROLE_HIERARCHY').values()):
             if role_id in roles:
                 return level
 
-    @task("Is Higher Rank", False)
+    @TaskDecorator.task("Is Higher Rank", False)
     async def is_higher_rank(self, role_id1: int, role_id2: int) -> bool:
         level1: int = await self.get_role_level(role_id1)
         level2: int = await self.get_role_level(role_id2)
         return level1 > level2
 
-    @task("Remove Permissions", False)
+    @TaskDecorator.task("Remove Permissions", False)
     async def remove_permissions(self, channel: discord.TextChannel, user: discord.Member) -> None:
         perms = channel.overwrites_for(user)
         perms.view_channel = False
         await channel.set_permissions(user, overwrite = perms)
 
-    @task("Send Embed", False)
+    @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
         embed = discord.Embed(
             color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
@@ -46,7 +46,7 @@ class Remove(commands.Cog):
         embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
-    @task("Check Higher Rank", False)
+    @TaskDecorator.task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         staff_team_role: discord.Role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         if staff_team_role in user.roles:
@@ -66,7 +66,7 @@ class Remove(commands.Cog):
     async def remove(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await self.remove_command(interaction, user)
 
-    @task("Remove Command", True)
+    @TaskDecorator.task("Remove Command", True)
     async def remove_command(self, interaction: discord.Interaction, user: discord.Member) -> None:
         removing_higher: bool = await self.check_higher_rank(interaction, user)
         if not removing_higher:

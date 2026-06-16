@@ -16,8 +16,8 @@ import aiohttp
 import discord
 import time
 from core.config import ConfigManager
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_commands, log_tasks
 
 class Blacklist(commands.Cog):
@@ -31,7 +31,7 @@ class Blacklist(commands.Cog):
     @tasks.loop(minutes = 10)
     async def check_blacklists(self) -> None:
         current_time: int = int(time.time())
-        rows: list = execute(
+        rows: list = DatabasePool.execute(
             "SELECT user_id FROM blacklists WHERE unblacklist_at < %s",
             (current_time,),
         )
@@ -40,22 +40,22 @@ class Blacklist(commands.Cog):
             log_tasks.info(f"Removing ticket blacklists {user_ids}")
             await self.remove_blacklists(user_ids)
         
-    @task("Remove Blacklists", False)
+    @TaskDecorator.task("Remove Blacklists", False)
     async def remove_blacklists(self, user_ids: list[str]) -> None:
         if not user_ids:
             return
         placeholders = ", ".join(["%s"] * len(user_ids))
-        execute(f"DELETE FROM blacklists WHERE user_id IN ({placeholders})", tuple(user_ids))
+        DatabasePool.execute(f"DELETE FROM blacklists WHERE user_id IN ({placeholders})", tuple(user_ids))
 
-    @task("Get Unix", False)
+    @TaskDecorator.task("Get Unix", False)
     async def get_unix(self, length: str) -> int:
         current_unix = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         length_in_secs = int(length.split("d")[0]) * 86400
         return current_unix + length_in_secs
 
-    @task("Check Blacklisted", False)
+    @TaskDecorator.task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
-        existing_row = execute("SELECT * FROM blacklists WHERE user_id = %s", (user.id,))
+        existing_row = DatabasePool.execute("SELECT * FROM blacklists WHERE user_id = %s", (user.id,))
         if existing_row:
             await self.remove_blacklists([str(user.id)])
             await self.send_embed(interaction, user, "unblacklisted")
@@ -63,16 +63,16 @@ class Blacklist(commands.Cog):
             return True
         return False
 
-    @task("Blacklist User", False)
+    @TaskDecorator.task("Blacklist User", False)
     async def blacklist_user(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:
         unix = await self.get_unix(length)
-        execute(
+        DatabasePool.execute(
             "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) VALUES (%s, %s, %s, %s, %s)",
             (user.id, reason or "N/A", interaction.user.id, unix, int(__import__("time").time())),
         )
         log_commands.info(f"Ticket blacklisted {user} ({user.id}) for {length}")
 
-    @task("Send Embed", False)
+    @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member, blacklisted: str) -> None:
         embed = discord.Embed(
             description = f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
@@ -81,7 +81,7 @@ class Blacklist(commands.Cog):
         embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
-    @task("Send Webhook", False)
+    @TaskDecorator.task("Send Webhook", False)
     async def send_webhook(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:
         unix: int = await self.get_unix(length)
         embed = discord.Embed(
@@ -102,7 +102,7 @@ class Blacklist(commands.Cog):
     async def blacklist(self, interaction: discord.Interaction, user: discord.Member, length: Literal["1d", "2d", "3d", "4d", "5d", "6d", "7d", "10d", "14d", "28d", "30d"], reason: str = None) -> None:
         await self.blacklist_command(interaction, user, length, reason)
     
-    @task("Blacklist Command", True)
+    @TaskDecorator.task("Blacklist Command", True)
     async def blacklist_command(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str = None) -> None:
         blacklisted: bool = await self.check_blacklisted(interaction, user)
         if not blacklisted:

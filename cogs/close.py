@@ -18,8 +18,8 @@ import asyncio
 import time
 import pytz
 from core.config import ConfigManager
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_commands, log_tasks
 from services.ticket_check_service import is_ticket
 from services.statistics_service import is_found
@@ -35,7 +35,7 @@ class Close(commands.Cog):
         except Exception as error:
             log_commands.warning(f"Failed to convert the timestamp to EST {error}")
 
-    @task("Get Transcript Link")
+    @TaskDecorator.task("Get Transcript Link")
     async def return_link(self, content) -> str:
         url: str = 'https://paste.minecadia.com/documents'
         headers = {
@@ -61,11 +61,11 @@ class Close(commands.Cog):
         #
         #return "https://paste.md-5.net/"
 
-    @task("Fetch All Messages")
+    @TaskDecorator.task("Fetch All Messages")
     async def fetch_all_messages(self, channel: discord.TextChannel) -> list[discord.Message]:
         return [message async for message in channel.history(limit = None, oldest_first = True)]
 
-    @task("Format Embed")
+    @TaskDecorator.task("Format Embed")
     async def format_embed_content(self, embed: discord.Embed) -> str:
         message_content = ""
         lengths = []
@@ -118,7 +118,7 @@ class Close(commands.Cog):
 
         return message_content
 
-    @task("Generate Transcript Content")
+    @TaskDecorator.task("Generate Transcript Content")
     async def generate_transcript_content(self, messages: list[discord.Message], opened_string: str, ticket_type: str, ticket_number: str, owner: discord.Member, owner_id: int, reason: str, closed_by: discord.Member, channel_id: int, closed_at_string: str, closed_by_id: int) -> str:
         content: str = f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
         for message in messages:
@@ -140,7 +140,7 @@ class Close(commands.Cog):
 
         return content
 
-    @task("Get Ticketlog Embed")
+    @TaskDecorator.task("Get Ticketlog Embed")
     async def get_ticket_log(self, reason: str, opened_timestamp: int, ticket_number: str, owner_mention: str, owner: discord.Member, link: str, ticket_type: str, closed_at_timestamp: int, closed_by: discord.Member) -> discord.Embed:
         delta = "N/A"
         if opened_timestamp != "N/A":
@@ -157,7 +157,7 @@ class Close(commands.Cog):
 
         return embed
     
-    @task("Send Ticketlog", False)
+    @TaskDecorator.task("Send Ticketlog", False)
     async def send_ticket_log(
         self,
         guild: discord.Guild,
@@ -197,7 +197,7 @@ class Close(commands.Cog):
         except Exception as error:
             log_tasks.warning(f"Failed to send ticket log: {error}")
 
-    @task("Update Database")
+    @TaskDecorator.task("Update Database")
     async def update_database(
         self,
         closed_by: discord.Member,
@@ -211,11 +211,11 @@ class Close(commands.Cog):
         tickets_closed_stat = await is_found(closed_by, "tickets_closed")
         new_ticket_closed_stat: int = tickets_closed_stat + 1
 
-        execute(
+        DatabasePool.execute(
             "UPDATE tickets SET is_active = 0, closed_by_id = %s, closed_at = %s, reason = %s, name = %s, transcript = %s WHERE channel_id = %s",
             (closed_by_id, closed_at_timestamp, reason, name, link, channel_id),
         )
-        execute(
+        DatabasePool.execute(
             "UPDATE staff_statistics SET tickets_closed = %s WHERE user_id = %s",
             (new_ticket_closed_stat, closed_by_id),
         )
@@ -225,11 +225,11 @@ class Close(commands.Cog):
         if analytics:
             analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 
-    @task("Fetch Ticket Info")
+    @TaskDecorator.task("Fetch Ticket Info")
     async def fetch_ticket_info(self, channel_id: int) -> tuple:
         bot_account: discord.ClientUser = self.client.user
         info = (bot_account, bot_account.id, bot_account.mention, 0, "N/A", "0000", "Unknown", "", 0, "")
-        row = execute(
+        row = DatabasePool.execute(
             "SELECT number, opened_at, privated, type, owner_id FROM tickets WHERE channel_id = %s",
             (channel_id,),
         )
@@ -249,9 +249,9 @@ class Close(commands.Cog):
 
         return info
 
-    @task("Get Ticket Count")
+    @TaskDecorator.task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
-        row = execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
+        row = DatabasePool.execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
         return int(row[0]['COUNT(*)'])
 
     @is_ticket()
@@ -262,7 +262,7 @@ class Close(commands.Cog):
     async def close(self, interaction: discord.Interaction, reason: str) -> None:
         await self.close_command(interaction, reason)
 
-    @task("Close Command", False)
+    @TaskDecorator.task("Close Command", False)
     async def close_command(self, interaction: discord.Interaction, reason: str) -> None:
         await interaction.response.defer()
         if interaction.guild is None:
@@ -274,7 +274,7 @@ class Close(commands.Cog):
             reason,
         )
 
-    @task("Close Ticket Channel", False)
+    @TaskDecorator.task("Close Ticket Channel", False)
     async def close_ticket_channel(
         self,
         guild: discord.Guild,

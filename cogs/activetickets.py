@@ -16,7 +16,7 @@ import discord
 import asyncio
 import os
 from core.config import ConfigManager
-from core.decorators import task
+from core.decorators import TaskDecorator
 from core.loggers import log_tasks
 
 
@@ -25,7 +25,7 @@ class ActiveTickets(commands.Cog):
         self.client: commands.Bot = client
         self.cache = cachetools.TTLCache(maxsize = ConfigManager.get('ACTIVE_TICKETS_CACHE')['ENTRIES'], ttl = 60 * ConfigManager.get('ACTIVE_TICKETS_CACHE')['MINUTES_TO_EXPIRE'])
 
-    @task("Check User Messages")
+    @TaskDecorator.task("Check User Messages")
     async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
@@ -45,7 +45,7 @@ class ActiveTickets(commands.Cog):
             log_tasks.error(f"Checking user messages error {error}")
             self.cache[cache_key] = False
 
-    @task("Get Tickets", True)
+    @TaskDecorator.task("Get Tickets", True)
     async def get_tickets_list(self, interaction: discord.Interaction) -> List[Tuple[str, str]]:
         tickets: List[Tuple[str, str]] = []
         for category_id in ConfigManager.get("TICKET_CATEGORIES"):
@@ -148,7 +148,7 @@ class ActiveTickets(commands.Cog):
             return view, []
         return view, logo_files
 
-    @task("Send Components V2 response")
+    @TaskDecorator.task("Send Components V2 response")
     async def send_active_tickets_response(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> None:
         view, logo_files = self._build_active_tickets_layout(interaction, tickets)
         edit_kw: dict = {"content": None, "embed": None, "view": view}
@@ -161,7 +161,7 @@ class ActiveTickets(commands.Cog):
     async def activetickets(self, interaction: discord.Interaction) -> None:
         await self.activetickets_command(interaction)
 
-    @task("ActiveTickets Command", True)
+    @TaskDecorator.task("ActiveTickets Command", True)
     async def activetickets_command(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
         tickets: List[Tuple[str, str]] = await self.get_tickets_list(interaction)

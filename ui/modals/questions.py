@@ -4,8 +4,8 @@ import random
 import discord
 
 from core.config import ConfigManager
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from core.loggers import log_tasks
 from services.embed_service import EmbedService
 
@@ -55,9 +55,9 @@ class Questions(discord.ui.Modal):
         except Exception as e:
             log_tasks.error(f"Failed to add items to the Questions modal {e}")
 
-    @task("Get Previous Ticket", False)
+    @TaskDecorator.task("Get Previous Ticket", False)
     async def get_previous_ticket(self, owner_id: int) -> discord.Embed:
-        rows = execute(
+        rows = DatabasePool.execute(
             "SELECT name, number, reason, transcript, closed_at, closed_by_id, privated FROM tickets "
             "WHERE owner_id = %s AND is_active = 0 ORDER BY closed_at DESC LIMIT 1",
             (owner_id,),
@@ -126,7 +126,7 @@ class Questions(discord.ui.Modal):
                 f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{interaction.channel} ({interaction.channel.id})"
             )
 
-            rows = execute(
+            rows = DatabasePool.execute(
                 "SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (interaction.channel.id,)
             )
             if rows:

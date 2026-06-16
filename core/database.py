@@ -61,21 +61,22 @@ class DatabasePool:
                 rows = cursor.fetchall()
             cursor.close()
         except Exception as error:
-            from core.errors.db import log_db_failure
+            from core.errors.db import DatabaseErrors
 
-            log_db_failure(log_tasks, error, query_hint=query)
+            DatabaseErrors.log_db_failure(log_tasks, error, query_hint=query)
         finally:
             if connection is not None:
                 connection.close()
         return rows
 
+    @classmethod
+    def execute(cls, query: str, params: tuple | None = None) -> list:
+        """Blocking query — use only from threads or sync code."""
+        return cls.get().execute(query, params)
 
-def execute(query: str, params: tuple | None = None) -> list:
-    """Blocking query — use only from threads or sync code. Prefer ``aexecute`` in async handlers."""
-    return DatabasePool.get().execute(query, params)
+    @classmethod
+    async def aexecute(cls, query: str, params: tuple | None = None) -> list:
+        """Run a blocking query off the Discord event loop."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_DB_EXECUTOR, cls.execute, query, params)
 
-
-async def aexecute(query: str, params: tuple | None = None) -> list:
-    """Run a blocking query off the Discord event loop."""
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_DB_EXECUTOR, execute, query, params)

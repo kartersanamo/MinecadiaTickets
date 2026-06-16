@@ -10,8 +10,8 @@ License: MIT
 from discord.ext import commands
 from discord import app_commands
 import discord
-from core.database import execute
-from core.decorators import task
+from core.database import DatabasePool
+from core.decorators import TaskDecorator
 from ui.views.paginator import Paginator
 
 
@@ -19,7 +19,7 @@ class BlacklistList(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client: commands.Bot = client
 
-    @task("Send Paginator")
+    @TaskDecorator.task("Send Paginator")
     async def send_paginator(self, interaction: discord.Interaction, data: list) -> None:
         paginate = Paginator()
         paginate.title = "Blacklisted Users"
@@ -27,7 +27,7 @@ class BlacklistList(commands.Cog):
         paginate.sep = 5
         await paginate.send(interaction) 
 
-    @task("Get Blacklist Data")
+    @TaskDecorator.task("Get Blacklist Data")
     async def get_blacklist_data(self, interaction: discord.Interaction, rows: list) -> list:
         blacklist_data: list = []
         for row in rows:
@@ -57,9 +57,9 @@ class BlacklistList(commands.Cog):
     async def blacklistlist(self, interaction: discord.Interaction) -> None:
         await self.blacklistlist_command(interaction)
 
-    @task("Blacklist List Command", True)
+    @TaskDecorator.task("Blacklist List Command", True)
     async def blacklistlist_command(self, interaction: discord.Interaction) -> None:
-        rows: list = execute("SELECT user_id, staff_id, unblacklist_at, reason FROM blacklists")
+        rows: list = DatabasePool.execute("SELECT user_id, staff_id, unblacklist_at, reason FROM blacklists")
         blacklist_data: list = await self.get_blacklist_data(interaction, rows)
         await self.send_paginator(interaction, blacklist_data)
 
