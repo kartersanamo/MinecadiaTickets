@@ -308,4 +308,4 @@ class TicketCreationService:
 
         channel: discord.TextChannel = await self.create_ticket(interaction = interaction)
         ticket_count: int = await self.get_ticket_count()
-        log_tasks.info(f"Created #{channel} ({channel.id}) {interaction.data.get('custom_id')} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")
+        log_tasks.info(f"Created #{channel} ({channel.id}) {channel.category.name} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")
