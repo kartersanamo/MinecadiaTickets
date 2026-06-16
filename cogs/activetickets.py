@@ -16,7 +16,7 @@ class ActiveTickets(commands.Cog):
         self.client: commands.Bot = client
         self.cache = cachetools.TTLCache(maxsize = ConfigManager.get('ACTIVE_TICKETS_CACHE')['ENTRIES'], ttl = 60 * ConfigManager.get('ACTIVE_TICKETS_CACHE')['MINUTES_TO_EXPIRE'])
 
-    @task("Check User Messages", False)
+    @task("Check User Messages")
     async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
@@ -139,7 +139,7 @@ class ActiveTickets(commands.Cog):
             return view, []
         return view, logo_files
 
-    @task("Send Components V2 response", False)
+    @task("Send Components V2 response")
     async def send_active_tickets_response(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> None:
         view, logo_files = self._build_active_tickets_layout(interaction, tickets)
         edit_kw: dict = {"content": None, "embed": None, "view": view}

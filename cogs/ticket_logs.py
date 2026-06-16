@@ -1,5 +1,11 @@
 """
-Ticket logs slash command — Components V2 browser for closed tickets.
+ticket_logs.py
+
+This file is the cog for the ticket logs command. It is used to display
+the logs of the tickets in a more detailed way.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
 """
 from __future__ import annotations
 
