@@ -1,3 +1,12 @@
+"""
+remove.py
+
+This file is the cog for the remove command.
+It is used to remove a user from a ticket channel.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

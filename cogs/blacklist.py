@@ -1,3 +1,12 @@
+"""
+blacklist.py
+
+This file is the cog for the blacklist command.
+It is used to blacklist a user from opening tickets and unblacklist them after a certain time.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands, tasks
 from discord import app_commands
 from discord import Webhook

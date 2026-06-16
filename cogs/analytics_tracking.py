@@ -1,4 +1,12 @@
-"""Track messages in open ticket channels (staff vs owner)."""
+"""
+analytics_tracking.py
+
+This file is the cog for the analytics tracking.
+It is used to track the analytics of the tickets in the server.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from __future__ import annotations
 
 import asyncio

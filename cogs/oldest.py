@@ -1,3 +1,12 @@
+"""
+oldest.py
+
+This file is the cog for the oldest command.
+It is used to display the oldest tickets in the server.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

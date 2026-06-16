@@ -1,3 +1,12 @@
+"""
+send_tickets.py
+
+This file is the cog for the send tickets command.
+It is used to send a message prompt to the ticket channel.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 from typing import Literal

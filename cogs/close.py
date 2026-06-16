@@ -1,3 +1,12 @@
+"""
+close.py
+
+This file is the cog for the close command.
+It is used to close a ticket channel and generate a transcript.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 
 from core.analytics import logger as analytics

@@ -1,3 +1,12 @@
+"""
+private.py
+
+This file is the cog for the private command.
+It is used to private a ticket channel so that only Admins can view it.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

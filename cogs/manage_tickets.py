@@ -1,3 +1,12 @@
+"""
+manage_tickets.py
+
+This file is the cog for the manage tickets command.
+It is used to manage the ticket categories and types.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

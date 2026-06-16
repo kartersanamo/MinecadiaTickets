@@ -1,3 +1,12 @@
+"""
+activetickets.py
+
+This file is the cog for the active tickets command.
+It is used to display the tickets that the user is actively speaking in.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord import app_commands
 from discord.enums import SeparatorSpacing
 from discord.ext import commands

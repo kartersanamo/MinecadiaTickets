@@ -1,3 +1,12 @@
+"""
+add.py
+
+This file is the cog for the add command.
+It is used to add a user to a ticket channel so that they can view it.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

@@ -1,3 +1,12 @@
+"""
+move.py
+
+This file is the cog for the move command.
+It is used to move a ticket to a new category.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

@@ -1,3 +1,12 @@
+"""
+rename.py
+
+This file is the cog for the rename command.
+It is used to rename a ticket channel to a new name.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import asyncio

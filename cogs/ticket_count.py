@@ -1,3 +1,12 @@
+"""
+ticket_count.py
+
+This file is the cog for the ticket count command. It is used to display
+the number of tickets open in the server.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 from typing import Literal

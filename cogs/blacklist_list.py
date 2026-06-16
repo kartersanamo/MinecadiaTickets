@@ -1,3 +1,12 @@
+"""
+blacklist_list.py
+
+This file is the cog for the blacklist list command.
+It is used to display the list of users who are blacklisted from opening tickets.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands
 from discord import app_commands
 import discord

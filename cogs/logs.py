@@ -1,3 +1,12 @@
+"""
+logs.py
+
+This file is the cog for the logs command. It is used to display
+the logs of the tickets in the server and the number of tickets open.
+
+Copyright (c) 2026 Karter Sanamo
+License: MIT
+"""
 from discord.ext import commands, tasks
 import discord
 from core.config import ConfigManager
