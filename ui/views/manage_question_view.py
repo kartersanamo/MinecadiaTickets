@@ -122,7 +122,7 @@ class ManageQuestionView(discord.ui.View):
     async def go_back_type(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
             await interaction.response.defer()
-            view = ManageTicketsView(self.ticket_info, self.ticket_category)
+            view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
             if interaction.message is not None:
                 await interaction.message.edit(view = view)
@@ -147,8 +147,6 @@ class ManageQuestionView(discord.ui.View):
             if star_role is None:
                 return await interaction.response.send_message(content = "Administrator permissions role not found!", ephemeral = True)
             if not isinstance(interaction.user, discord.Member) or not star_role in interaction.user.roles:
-                return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
-            if not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()
             with open("assets/tickets.json", "r+") as file:

@@ -1,7 +1,5 @@
 import asyncio
-from discord.ui.item import Item
 import random
-from typing import Any, Self
 
 import discord
 
@@ -96,7 +94,14 @@ class Questions(discord.ui.Modal):
             guild = interaction.guild
             channel = interaction.channel
             message = interaction.message
-            if guild is None or not isinstance(channel, discord.TextChannel) or message is None or message.embeds is None:
+            user = interaction.user
+            if (
+                guild is None
+                or not isinstance(channel, discord.TextChannel)
+                or not isinstance(user, discord.Member)
+                or message is None
+                or message.embeds is None
+            ):
                 return
 
             roles = [
@@ -107,11 +112,12 @@ class Questions(discord.ui.Modal):
             tags = await channel.send(" ".join(roles))
             embed = message.embeds[0]
             if embed.description is None:
+                await tags.delete()
                 return
 
             split = embed.description.split("\n\n")
             new_description = f"{split[0]}\n \n{split[1]}\n \n"
-            for heading, item in zip[tuple[Any, Item[Self]]](self._modal_field_headings, self.children):
+            for heading, item in zip(self._modal_field_headings, self.children):
                 if not isinstance(item, discord.ui.TextInput):
                     continue
                 if heading == "What is your in game name?" or heading == "What is the offending player's IGN?":
@@ -134,12 +140,9 @@ class Questions(discord.ui.Modal):
             else:
                 await message.edit(embed=embed, view=None)
 
-            if not isinstance(interaction.user, discord.Member):
-                return
-
-            perms = channel.overwrites_for(interaction.user)
+            perms = channel.overwrites_for(user)
             perms.send_messages = perms.view_channel = True
-            await channel.set_permissions(interaction.user, overwrite=perms)
+            await channel.set_permissions(user, overwrite=perms)
             await tags.delete()
             log_tasks.info(
                 f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{channel} ({channel.id})"

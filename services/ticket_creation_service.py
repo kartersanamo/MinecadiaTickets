@@ -234,18 +234,27 @@ class TicketCreationService:
         data = interaction.data
         if data is None:
             return None
-        custom_id = data.get("custom_id")   
+        custom_id = data.get("custom_id")
         if custom_id is None:
             return None
-        ticket_info = self.tickets[custom_id]
+        values = data.get("values")
+        if values is None or not isinstance(values, list) or not values:
+            return None
+        ticket_type_name = values[0]
+        if not isinstance(ticket_type_name, str):
+            return None
+        category_tickets = self.tickets.get(custom_id)
+        if not category_tickets:
+            return None
+        ticket_info = category_tickets.get(ticket_type_name)
         if ticket_info is None:
             return None
-        ticket_type = f"{custom_id} ({ticket_info})"
+        ticket_type = f"{custom_id} ({ticket_type_name})"
         guild = interaction.guild
         if guild is None:
             return None
-        category_channel = guild.get_channel(ticket_info["Category"])
-        if not isinstance(category_channel, discord.CategoryChannel):
+        category = guild.get_channel(ticket_info["Category"])
+        if not isinstance(category, discord.CategoryChannel):
             return None
         staff = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff is None:
@@ -257,7 +266,9 @@ class TicketCreationService:
             discord.Role | discord.Member | discord.Object,
             discord.PermissionOverwrite,
         ] = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
             user: discord.PermissionOverwrite(view_channel=True, send_messages=False),
+            staff: discord.PermissionOverwrite(view_channel=False),
         }
         for role_id in ticket_info["Roles"]:
             role_obj = guild.get_role(role_id)
@@ -266,15 +277,15 @@ class TicketCreationService:
         number = await self.get_number()
         channel = await guild.create_text_channel(
             name=f"{user.name}-ticket-{number}",
-            category=category_channel,
+            category=category,
             overwrites=overwrites,
         )
-        if channel is None:
-            return None
         staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team is None:
             return None
-        await channel.set_permissions(staff_team, view_channel=False)
+        panel_channel = interaction.channel
+        if isinstance(panel_channel, discord.TextChannel):
+            await panel_channel.set_permissions(staff_team, view_channel=False)
         embed = discord.Embed(
             description=f"✅ You have successfully opened a ticket! {channel.mention}",
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
@@ -315,7 +326,7 @@ class TicketCreationService:
             (
                 channel.id,
                 interaction.user.id,
-                category_channel.name,
+                category.name,
                 int(time.time()),
                 number,
                 1,
