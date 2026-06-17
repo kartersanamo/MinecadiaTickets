@@ -44,7 +44,7 @@ class ManageTypeView(discord.ui.View):
 
     async def update_embed(self, interaction: discord.Interaction):
         try:
-            self.ticket_info = await get_info()
+            self.ticket_info = await ConfigManager.reload_tickets()
             cat_info = self.ticket_info.get(self.ticket_category, {})
             ticket_info = cat_info.get(self.ticket, {})
             category = interaction.guild.get_channel(ticket_info.get('Category', "None"))

@@ -1,5 +1,7 @@
 import asyncio
+from discord.ui.item import Item
 import random
+from typing import Any, Self
 
 import discord
 
@@ -56,7 +58,7 @@ class Questions(discord.ui.Modal):
             log_tasks.error(f"Failed to add items to the Questions modal {e}")
 
     @TaskDecorator.task("Get Previous Ticket", False)
-    async def get_previous_ticket(self, owner_id: int) -> discord.Embed:
+    async def get_previous_ticket(self, owner_id: int) -> discord.Embed | None:
         rows = DatabasePool.execute(
             "SELECT name, number, reason, transcript, closed_at, closed_by_id, privated FROM tickets "
             "WHERE owner_id = %s AND is_active = 0 ORDER BY closed_at DESC LIMIT 1",
@@ -87,15 +89,29 @@ class Questions(discord.ui.Modal):
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
         return embed
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
             await interaction.response.defer()
-            roles = [interaction.guild.get_role(ping).mention for ping in self.ticket_info["Pings"]]
-            tags = await interaction.channel.send(" ".join(roles))
-            embed = interaction.message.embeds[0]
+
+            guild = interaction.guild
+            channel = interaction.channel
+            message = interaction.message
+            if guild is None or not isinstance(channel, discord.TextChannel) or message is None or message.embeds is None:
+                return
+
+            roles = [
+                role.mention
+                for ping in self.ticket_info["Pings"]
+                if (role := guild.get_role(ping)) is not None
+            ]
+            tags = await channel.send(" ".join(roles))
+            embed = message.embeds[0]
+            if embed.description is None:
+                return
+
             split = embed.description.split("\n\n")
             new_description = f"{split[0]}\n \n{split[1]}\n \n"
-            for heading, item in zip(self._modal_field_headings, self.children):
+            for heading, item in zip[tuple[Any, Item[Self]]](self._modal_field_headings, self.children):
                 if not isinstance(item, discord.ui.TextInput):
                     continue
                 if heading == "What is your in game name?" or heading == "What is the offending player's IGN?":
@@ -107,34 +123,37 @@ class Questions(discord.ui.Modal):
                 description=new_description, color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
             )
 
-            logo_url = interaction.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
+            logo_url = EmbedService.get_logo_url(ConfigManager.get("LOGO"))
             embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
 
-            previous_ticket: discord.Embed = await self.get_previous_ticket(
+            previous_ticket: discord.Embed | None = await self.get_previous_ticket(
                 owner_id=interaction.user.id
             )
             if previous_ticket:
-                await interaction.message.edit(embeds=[embed, previous_ticket], view=None)
+                await message.edit(embeds=[embed, previous_ticket], view=None)
             else:
-                await interaction.message.edit(embed=embed, view=None)
+                await message.edit(embed=embed, view=None)
 
-            perms = interaction.channel.overwrites_for(interaction.user)
+            if not isinstance(interaction.user, discord.Member):
+                return
+
+            perms = channel.overwrites_for(interaction.user)
             perms.send_messages = perms.view_channel = True
-            await interaction.channel.set_permissions(interaction.user, overwrite=perms)
+            await channel.set_permissions(interaction.user, overwrite=perms)
             await tags.delete()
             log_tasks.info(
-                f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{interaction.channel} ({interaction.channel.id})"
+                f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{channel} ({channel.id})"
             )
 
             rows = DatabasePool.execute(
-                "SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (interaction.channel.id,)
+                "SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (channel.id,)
             )
             if rows:
                 from services.ticket_creation_service import TicketCreationService as TicketSystem
 
                 asyncio.create_task(
                     TicketSystem().notify_dashboard_new_ticket(
-                        channel=interaction.channel,
+                        channel=channel,
                         number=int(rows[0]["number"]),
                         ticket_type=self.ticket_type,
                         owner_id=interaction.user.id,

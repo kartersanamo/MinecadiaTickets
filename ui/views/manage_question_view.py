@@ -23,7 +23,7 @@ class ManageQuestionView(discord.ui.View):
         super().__init__(timeout = None)
     async def update_embed(self, interaction: discord.Interaction):
         try:
-            self.ticket_info = await get_info()
+            self.ticket_info = await ConfigManager.reload_tickets()
             questions = self.ticket_info.get(self.ticket_category).get(self.ticket).get('Questions')
             for question in questions:
                 if question.get('Label') == self.question:

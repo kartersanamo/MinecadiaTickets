@@ -55,7 +55,7 @@ class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
         self.stream = self._open()
         self.rolloverAt = self.rolloverAt + self.interval
 
-LOGGING_CONFIG: dict[str, int | bool | dict] = {
+LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -106,7 +106,7 @@ LOGGING_CONFIG: dict[str, int | bool | dict] = {
 
 logging.config.dictConfig(config = LOGGING_CONFIG)
 
-for logger_name in LOGGING_CONFIG["loggers"]:
+for logger_name in LOGGING_CONFIG["loggers"].keys():
     logger: logging.Logger = logging.getLogger(name = logger_name)
     for handler in logger.handlers:
         if isinstance(handler, TimedRotatingFileHandler):

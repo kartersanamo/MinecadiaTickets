@@ -17,7 +17,7 @@ class ManageTicketsView(discord.ui.View):
 
     async def update_embed(self, interaction: discord.Interaction):
         try:
-            self.ticket_info = await get_info()
+            self.ticket_info = await ConfigManager.reload_tickets()
             category_info = self.ticket_info.get(self.category)
             category_embed = discord.Embed(title = f"Category Editor",
                                         color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),

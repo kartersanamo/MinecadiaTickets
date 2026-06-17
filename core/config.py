@@ -46,10 +46,22 @@ class ConfigManager:
     @classmethod
     def tickets(cls) -> dict:
         if cls._tickets is None:
-            with open("assets/tickets.json", "r") as handle:
-                data = json.load(handle)
-            data.pop("TOGGLE_STATUS", None)
-            cls._tickets = data
+            cls._tickets = cls._read_tickets_file()
+        return cls._tickets
+
+    @classmethod
+    def _read_tickets_file(cls) -> dict:
+        with open("assets/tickets.json", "r") as handle:
+            data = json.load(handle)
+        data.pop("TOGGLE_STATUS", None)
+        return data
+
+    @classmethod
+    async def reload_tickets(cls) -> dict:
+        """Reload ticket types from disk (used by manage-tickets UI after edits)."""
+        import asyncio
+
+        cls._tickets = await asyncio.to_thread(cls._read_tickets_file)
         return cls._tickets
 
     def __init__(self):

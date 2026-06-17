@@ -1,5 +1,10 @@
+from typing import Any
+
+
 import discord
 import json
+
+from ui.views.manage_categories_select_view import ManageCategoriesSelect
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -11,13 +16,13 @@ class ManageCategoriesView(discord.ui.View):
         self.add_item(ManageCategoriesSelect(self.ticket_info))
     async def update_embed(self, interaction: discord.Interaction):
         try:
-            self.ticket_info = await get_info()
+            self.ticket_info = await ConfigManager.reload_tickets()
             main_menu_embed = discord.Embed(title = "Main Menu",
                                 color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = "Select Category")
-            for ticket_cat in list(self.ticket_info.keys()):
+            for ticket_cat in list[Any](self.ticket_info.keys()):
                 val = ""
-                for ticket_type in list(self.ticket_info.get(ticket_cat).keys()):
+                for ticket_type in list[Any](self.ticket_info.get(ticket_cat, {}).keys()):
                     val += f"\t `»` {ticket_type}\n"
                 main_menu_embed.add_field(name = ticket_cat, value = val)
             await interaction.edit_original_response(embed = main_menu_embed, content = None)
