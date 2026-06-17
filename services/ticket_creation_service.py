@@ -1,10 +1,10 @@
+import aiohttp
+import discord
 import json
 import os
 import time
 
-import aiohttp
-import discord
-
+from services.embed_service import EmbedService
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
@@ -27,7 +27,10 @@ class TicketCreationService:
         bypass_ids.discard(0)
         if not bypass_ids:
             return False
-        member_role_ids = {int(r.id) for r in interaction.user.roles}
+        user = interaction.user
+        if not isinstance(user, discord.Member):
+            return False
+        member_role_ids = {int(r.id) for r in user.roles}
         return bool(member_role_ids & bypass_ids)
 
     async def notify_dashboard_new_ticket(
@@ -73,12 +76,23 @@ class TicketCreationService:
         return int(row[0]["COUNT(*)"])
 
     @TaskDecorator.task("Check Verified", False)
-    async def check_verified(self, interaction: discord.Interaction) -> str:
-        role = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["VERIFIED_ROLE_ID"])
-        if role not in interaction.user.roles:
-            channel = interaction.guild.get_channel(
-                ConfigManager.get("CHANNEL_IDS")["VERIFY_CHANNEL_ID"]
-            )
+    async def check_verified(self, interaction: discord.Interaction) -> str | None:
+        guild = interaction.guild
+        if guild is None:
+            return "`❌` You must be in a server to do this!"
+        role = guild.get_role(ConfigManager.get("ROLE_IDS")["VERIFIED_ROLE_ID"])
+        if role is None:
+            return "`❌` The verified role was not found!"
+        user = interaction.user
+        if not isinstance(user, discord.Member):
+            return "`❌` You must be a member of the server to do this!"
+        if role not in user.roles:
+            channel_id = ConfigManager.get("CHANNEL_IDS")["VERIFY_CHANNEL_ID"]
+            if channel_id is None:
+                return "`❌` The verify channel was not found!"
+            channel = guild.get_channel(channel_id)
+            if channel is None:
+                return "`❌` The verify channel was not found!"
             log_tasks.warning(
                 f"{interaction.user} ({interaction.user.id}) is not verified and tried to open a ticket"
             )
@@ -86,7 +100,7 @@ class TicketCreationService:
         return None
 
     @TaskDecorator.task("Check 5 Tickets", False)
-    async def check_5_tickets(self, interaction: discord.Interaction) -> str:
+    async def check_5_tickets(self, interaction: discord.Interaction) -> str | None:
         row = DatabasePool.execute(
             "SELECT COUNT(*) AS open_ticket_count FROM tickets WHERE owner_id = %s AND is_active = 1",
             (interaction.user.id,),
@@ -100,7 +114,7 @@ class TicketCreationService:
         return None
 
     @TaskDecorator.task("Check Blacklisted", False)
-    async def check_blacklisted(self, interaction: discord.Interaction) -> str:
+    async def check_blacklisted(self, interaction: discord.Interaction) -> str | None:
         row = DatabasePool.execute(
             "SELECT reason FROM blacklists WHERE user_id = %s",
             (interaction.user.id,),
@@ -114,7 +128,7 @@ class TicketCreationService:
         return None
 
     @TaskDecorator.task("Check Disabled", False)
-    async def check_disabled(self, interaction: discord.Interaction) -> str:
+    async def check_disabled(self, interaction: discord.Interaction) -> str | None:
         with open("assets/tickets.json", "r") as file:
             info = json.load(file)
 
@@ -124,8 +138,18 @@ class TicketCreationService:
             )
             return "`❌` Tickets are currently unavailable, please check again shortly."
 
-        category_name = interaction.data.get("custom_id")
-        ticket_type = interaction.data.get("values")[0]
+        data = interaction.data
+        if data is None:
+            return "`❌` The data was not found!"
+        category_name = data.get("custom_id")
+        if category_name is None:
+            return "`❌` The category name was not found!"
+        values = data.get("values")
+        if values is None or not isinstance(values, list):
+            return "`❌` The values were not found!"
+        ticket_type = values[0]
+        if ticket_type is None:
+            return "`❌` The ticket type was not found!"
         category_data = info.get(category_name, {})
         ticket_data = category_data.get(ticket_type, {})
 
@@ -134,11 +158,10 @@ class TicketCreationService:
                 f"{interaction.user} ({interaction.user.id}) tried to open a {category_name} ticket when it is disabled"
             )
             return f"`❌` {category_name} tickets are currently unavailable, please check again shortly."
-
         return None
 
     @TaskDecorator.task("Check Recent Open", False)
-    async def check_recent_open(self, interaction: discord.Interaction) -> str:
+    async def check_recent_open(self, interaction: discord.Interaction) -> str | None:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
         row = DatabasePool.execute(
@@ -155,13 +178,13 @@ class TicketCreationService:
             last_opened = float(row[0]["opened_at"])
             if time.time() - last_opened < 300:
                 log_tasks.warning(
-                    f"{interaction.user} ({interaction.user.id}) opened a ticket too recent."
+                    f"{interaction.user} ({interaction.user.id}) opened a ticket too recent {int((time.time() - last_opened)//60)}m {int((time.time() - last_opened)%60)}s ago."
                 )
                 return "`❌` You're opening tickets too fast! Please try again later."
         return None
 
     @TaskDecorator.task("Check Recent Closed", False)
-    async def check_recent_closed(self, interaction: discord.Interaction) -> str:
+    async def check_recent_closed(self, interaction: discord.Interaction) -> str | None:
         if await self.has_ticket_cooldown_bypass(interaction):
             return None
         row = DatabasePool.execute(
@@ -178,7 +201,7 @@ class TicketCreationService:
             last_closed = int(row[0]["closed_at"])
             if time.time() - last_closed < 120:
                 log_tasks.warning(
-                    f"{interaction.user} ({interaction.user.id}) had a recently closed ticket."
+                    f"{interaction.user} ({interaction.user.id}) had a recently closed ticket {int((time.time() - last_closed)//60)}m {int((time.time() - last_closed)%60)}s ago."               
                 )
                 return "`❌` Your last ticket was just closed! Please try again later."
         return None
@@ -207,29 +230,51 @@ class TicketCreationService:
         return int(row[0]["COUNT(*)"]) + 1
 
     @TaskDecorator.task("Create Ticket", False)
-    async def create_ticket(self, interaction: discord.Interaction) -> discord.TextChannel:
-        custom_id = interaction.data.get("custom_id")
-        ticket_type = interaction.data.get("values")[0]
-        ticket_info = self.tickets[custom_id][ticket_type]
-        ticket_type = f"{custom_id} ({ticket_type})"
-        category = interaction.guild.get_channel(ticket_info["Category"])
-        staff = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
-        permissions = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=False),
-            staff: discord.PermissionOverwrite(view_channel=False),
+    async def create_ticket(self, interaction: discord.Interaction) -> discord.TextChannel | None:
+        data = interaction.data
+        if data is None:
+            return None
+        custom_id = data.get("custom_id")   
+        if custom_id is None:
+            return None
+        ticket_info = self.tickets[custom_id]
+        if ticket_info is None:
+            return None
+        ticket_type = f"{custom_id} ({ticket_info})"
+        guild = interaction.guild
+        if guild is None:
+            return None
+        category_channel = guild.get_channel(ticket_info["Category"])
+        if not isinstance(category_channel, discord.CategoryChannel):
+            return None
+        staff = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
+        if staff is None:
+            return None
+        user = interaction.user
+        if not isinstance(user, discord.Member):
+            return None
+        overwrites: dict[
+            discord.Role | discord.Member | discord.Object,
+            discord.PermissionOverwrite,
+        ] = {
+            user: discord.PermissionOverwrite(view_channel=True, send_messages=False),
         }
-        for role in ticket_info["Roles"]:
-            role_obj = interaction.guild.get_role(role)
-            permissions.update({role_obj: discord.PermissionOverwrite(view_channel=True)})
+        for role_id in ticket_info["Roles"]:
+            role_obj = guild.get_role(role_id)
+            if role_obj is not None:
+                overwrites[role_obj] = discord.PermissionOverwrite(view_channel=True)
         number = await self.get_number()
-        channel = await interaction.guild.create_text_channel(
-            name=f"{interaction.user.name}-ticket-{number}",
-            category=category,
-            overwrites=permissions,
+        channel = await guild.create_text_channel(
+            name=f"{user.name}-ticket-{number}",
+            category=category_channel,
+            overwrites=overwrites,
         )
-        staff_team = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
-        await interaction.channel.set_permissions(staff_team, view_channel=False)
+        if channel is None:
+            return None
+        staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
+        if staff_team is None:
+            return None
+        await channel.set_permissions(staff_team, view_channel=False)
         embed = discord.Embed(
             description=f"✅ You have successfully opened a ticket! {channel.mention}",
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
@@ -247,7 +292,7 @@ class TicketCreationService:
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             description=description,
         )
-        logo_url = interaction.client.app.embeds.get_logo_url(LOGO)
+        logo_url = EmbedService.get_logo_url(LOGO)
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
         from ui.views.info_button import InfoButton
 
@@ -270,7 +315,7 @@ class TicketCreationService:
             (
                 channel.id,
                 interaction.user.id,
-                category.name,
+                category_channel.name,
                 int(time.time()),
                 number,
                 1,
@@ -285,7 +330,7 @@ class TicketCreationService:
 
     @TaskDecorator.task(action_name = "New Ticket")
     async def new_ticket(self, interaction: discord.Interaction, view: discord.ui.View) -> None:
-        embed: discord.Embed = discord.Embed(
+        embed = discord.Embed(
             description = f"📖 Attempting to create a new ticket for {interaction.user.mention}",
             color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
         )
@@ -304,8 +349,15 @@ class TicketCreationService:
                 description = result,
                 color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
             )
-            return await interaction.edit_original_response(embed = embed)
+            await interaction.edit_original_response(embed = embed)
+            return
 
-        channel: discord.TextChannel = await self.create_ticket(interaction = interaction)
+        channel = await self.create_ticket(interaction = interaction)
+        if channel is None:
+            await interaction.edit_original_response(embed = discord.Embed(
+                description = "`❌` Failed to create a ticket",
+                color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
+            ))
+            return
         ticket_count: int = await self.get_ticket_count()
-        log_tasks.info(f"Created #{channel} ({channel.id}) {channel.category.name} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")
+        log_tasks.info(f"Created #{channel} ({channel.id}) {channel.category.name if channel.category is not None else 'None'} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")

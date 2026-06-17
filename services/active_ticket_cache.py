@@ -55,7 +55,7 @@ class ActiveTicketCacheCog(commands.Cog):
         if not self._refresh_loop.is_running():
             self._refresh_loop.start()
 
-    def cog_unload(self) -> None:
+    async def cog_unload(self) -> None:
         self._refresh_loop.cancel()
 
     @tasks.loop(minutes=2)
