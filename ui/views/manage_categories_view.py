@@ -4,7 +4,6 @@ from typing import Any
 import discord
 import json
 
-from ui.views.manage_categories_select_view import ManageCategoriesSelect
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -13,6 +12,8 @@ class ManageCategoriesView(discord.ui.View):
     def __init__(self, ticket_info) -> None:
         super().__init__(timeout = None)
         self.ticket_info = ticket_info
+        from ui.views.manage_categories_select_view import ManageCategoriesSelect
+
         self.add_item(ManageCategoriesSelect(self.ticket_info))
     async def update_embed(self, interaction: discord.Interaction):
         try:

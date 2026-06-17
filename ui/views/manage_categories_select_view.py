@@ -2,9 +2,6 @@ from typing import Any
 import discord
 
 from core.loggers import log_commands
-from ui.views.manage_tickets_view import ManageTicketsView
-
-
 class ManageCategoriesSelect(discord.ui.Select):
     def __init__(self, ticket_info) -> None:
         self.ticket_info = ticket_info
@@ -13,6 +10,8 @@ class ManageCategoriesSelect(discord.ui.Select):
         super().__init__(placeholder = "Select a ticket category to manage...", options = options)
     async def callback(self, interaction: discord.Interaction) -> None:
         try:
+            from ui.views.manage_tickets_view import ManageTicketsView
+
             category = self.values[0]
             await interaction.response.defer()
             view = ManageTicketsView(self.ticket_info, category)

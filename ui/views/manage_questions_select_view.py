@@ -3,7 +3,6 @@ from typing import Any
 
 import discord
 
-from ui.views.manage_question_view import ManageQuestionView
 from core.loggers import log_commands
 
 
@@ -18,6 +17,8 @@ class ManageQuestionsSelect(discord.ui.Select):
     
     async def callback(self, interaction: discord.Interaction):
         try:
+            from ui.views.manage_question_view import ManageQuestionView
+
             question = self.values[0]
             await interaction.response.defer()
             view = ManageQuestionView(self.ticket_info, self.ticket_category, self.ticket, question)

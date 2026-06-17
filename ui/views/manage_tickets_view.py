@@ -1,8 +1,7 @@
 import discord
 import json
 
-from ui.views.manage_tickets_select_view import ManageTicketsSelect
-from ui.views.manage_categories_view import ManageCategoriesView
+from ui.views.manage_tickets_support import ManageTicketsSupport
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -12,6 +11,8 @@ class ManageTicketsView(discord.ui.View):
         super().__init__(timeout = None)
         self.ticket_info = ticket_info
         self.category = category
+        from ui.views.manage_tickets_select_view import ManageTicketsSelect
+
         self.add_item(ManageTicketsSelect(self.ticket_info, category))
         self.status_to_emoji = {
             "Enabled": "✅",
@@ -34,12 +35,13 @@ class ManageTicketsView(discord.ui.View):
 
     @staticmethod
     async def update_msg(interaction: discord.Interaction) -> None:
-        """Hook for refreshing public ticket panel messages after config edits."""
-        _ = interaction
+        await ManageTicketsSupport.update_msg(interaction)
 
     @discord.ui.button(label = "|<", style = discord.ButtonStyle.red, custom_id = "go_back_category", row = 0, disabled = False)
     async def go_back_category(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
+            from ui.views.manage_categories_view import ManageCategoriesView
+
             await interaction.response.defer()
             view = ManageCategoriesView(self.ticket_info)
             await view.update_embed(interaction)
@@ -68,7 +70,7 @@ class ManageTicketsView(discord.ui.View):
             if interaction.message is not None:
                 await interaction.message.edit(view = view)
             await interaction.followup.send(content = output, ephemeral = True)
-            await ManageTicketsView.update_msg(interaction)
+            await ManageTicketsSupport.update_msg(interaction)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has toggled the {self.category} category to {info.get(self.category, {}).get('Status', 'None')}")
         except Exception as e:
             log_commands.error(f"{interaction.user} ({interaction.user.id}) has failed to toggle {self.category} {e}")

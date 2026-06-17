@@ -2,8 +2,7 @@ from typing import Any
 import discord
 import json
 
-from ui.views.manage_tickets_view import ManageTicketsView
-from ui.views.manage_type_view import ManageTypeView
+from ui.views.manage_tickets_support import ManageTicketsSupport
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -113,7 +112,7 @@ class ManageQuestionView(discord.ui.View):
             view = ManageQuestionView(self.ticket_info, self.ticket_category, self.ticket, self.question)
             await view.update_embed(interaction)
             await interaction.message.edit(view = view)
-            await ManageTicketsView.update_msg(interaction)
+            await ManageTicketsSupport.update_msg(interaction)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has changed {value} to {new_value} for {self.ticket_category} {self.ticket}")
         except Exception as e:
             log_commands.error(f"Failed to change the value of {value} {e}")
@@ -121,6 +120,8 @@ class ManageQuestionView(discord.ui.View):
     @discord.ui.button(label = "|<", style = discord.ButtonStyle.red, custom_id = "go_back_type", row = 0, disabled = False)
     async def go_back_type(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
+            from ui.views.manage_type_view import ManageTypeView
+
             await interaction.response.defer()
             view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
@@ -176,7 +177,7 @@ class ManageQuestionView(discord.ui.View):
             if interaction.message is not None:
                 await interaction.message.edit(view = view)
             await interaction.followup.send(content = "Successfully changed the length.", ephemeral = True)
-            await ManageTicketsView.update_msg(interaction)
+            await ManageTicketsSupport.update_msg(interaction)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has changed the length of {self.ticket_category} {self.ticket} question {self.question} to {new_length}")
         except Exception as e:
             log_commands.error(f"{interaction.user} ({interaction.user.id}) has failed to change the length {e}")

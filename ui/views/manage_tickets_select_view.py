@@ -1,6 +1,5 @@
 import discord
 
-from ui.views.manage_type_view import ManageTypeView
 from core.loggers import log_commands
 
 
@@ -13,6 +12,8 @@ class ManageTicketsSelect(discord.ui.Select):
         super().__init__(placeholder = "Select a ticket type to manage...", options = options)
     async def callback(self, interaction: discord.Interaction):
         try:
+            from ui.views.manage_type_view import ManageTypeView
+
             ticket = self.values[0]
             await interaction.response.defer()
             view = ManageTypeView(self.ticket_info, self.ticket_category, ticket)

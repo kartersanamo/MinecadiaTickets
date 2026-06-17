@@ -2,8 +2,7 @@ from typing import Any
 import discord
 import json
 
-from ui.views.manage_questions_select_view import ManageQuestionsSelect
-from ui.views.manage_tickets_view import ManageTicketsView
+from ui.views.manage_tickets_support import ManageTicketsSupport
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -14,6 +13,8 @@ class ManageTypeView(discord.ui.View):
         self.ticket_category = ticket_category
         self.ticket = ticket
         super().__init__(timeout = None)
+        from ui.views.manage_questions_select_view import ManageQuestionsSelect
+
         self.add_item(ManageQuestionsSelect(self.ticket_info, self.ticket_category, self.ticket))
         self.mapping = {
             "Name": {
@@ -157,7 +158,7 @@ class ManageTypeView(discord.ui.View):
             view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
             await interaction.message.edit(view = view)
-            await ManageTicketsView.update_msg(interaction)
+            await ManageTicketsSupport.update_msg(interaction)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has changed {value} to {new_value} for {self.ticket_category} {self.ticket}")
         except Exception as e:
             log_commands.error(f"Failed to change the value of {value} {e}")
@@ -165,6 +166,8 @@ class ManageTypeView(discord.ui.View):
     @discord.ui.button(label = "|<", style = discord.ButtonStyle.red, custom_id = "go_back_type", row = 0, disabled = False)
     async def go_back_type(self, interaction: discord.Interaction, Button: discord.ui.Button):
         try:
+            from ui.views.manage_tickets_view import ManageTicketsView
+
             await interaction.response.defer()
             view = ManageTicketsView(self.ticket_info, self.ticket_category)
             await view.update_embed(interaction)
@@ -188,7 +191,7 @@ class ManageTypeView(discord.ui.View):
             await view.update_embed(interaction)
             if interaction.message is not None:
                 await interaction.message.edit(view = view)
-            await ManageTicketsView.update_msg(interaction)
+            await ManageTicketsSupport.update_msg(interaction)
             await interaction.followup.send(content = "Successfully toggled this ticket type.", ephemeral = True)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has toggled {self.ticket_category} {self.ticket} ticket type to {new_status}")
         except Exception as e:
