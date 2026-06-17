@@ -1,5 +1,9 @@
+from typing import Any
 import discord
 import json
+
+from ui.views.manage_questions_select_view import ManageQuestionsSelect
+from ui.views.manage_tickets_view import ManageTicketsView
 from core.config import ConfigManager
 from core.loggers import log_commands
 
@@ -45,14 +49,31 @@ class ManageTypeView(discord.ui.View):
     async def update_embed(self, interaction: discord.Interaction):
         try:
             self.ticket_info = await ConfigManager.reload_tickets()
+            guild = interaction.guild
+            if guild is None:
+                return
             cat_info = self.ticket_info.get(self.ticket_category, {})
             ticket_info = cat_info.get(self.ticket, {})
-            category = interaction.guild.get_channel(ticket_info.get('Category', "None"))
-            category_string = f"{category.mention} ({category.id})" if category else "# None (0000000000000000)"
-            pings = [interaction.guild.get_role(ping) for ping in ticket_info.get('Pings', [])]
-            roles = [interaction.guild.get_role(role) for role in ticket_info.get('Roles', [])]
-            pings = [ping.mention for ping in pings] if pings else ["None"]
-            roles = [role.mention for role in roles] if roles else ["None"]
+            category = guild.get_channel(ticket_info.get("Category", 0))
+            category_string = (
+                f"{category.mention} ({category.id})"
+                if isinstance(category, discord.abc.GuildChannel)
+                else "# None (0000000000000000)"
+            )
+            pings = [
+                role.mention
+                for role_id in ticket_info.get("Pings", [])
+                if (role := guild.get_role(role_id)) is not None
+            ]
+            roles = [
+                role.mention
+                for role_id in ticket_info.get("Roles", [])
+                if (role := guild.get_role(role_id)) is not None
+            ]
+            if not pings:
+                pings = ["None"]
+            if not roles:
+                roles = ["None"]
             if len(ticket_info.get('Message')) > 1000:
                 message = f"```{ticket_info.get('Message')[:1000]}\n...```" if ticket_info.get('Message', None) else "None"
             else:
@@ -78,29 +99,38 @@ class ManageTypeView(discord.ui.View):
     
     async def change_value(self, interaction: discord.Interaction, value):
         try:
-            star_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['ADMINISTRATOR_PERMS_ROLE_ID']) 
-            if not star_role in interaction.user.roles:
+            if interaction.guild is None:
+                return
+            guild = interaction.guild
+            star_role = guild.get_role(ConfigManager.get('ROLE_IDS')['ADMINISTRATOR_PERMS_ROLE_ID']) 
+            if star_role is None:
+                return await interaction.response.send_message(content = "Administrator permissions role not found!", ephemeral = True)
+            if not isinstance(interaction.user, discord.Member) or not star_role in interaction.user.roles:
                 return await interaction.response.send_message(content = "You can't do this!", ephemeral = True)
             await interaction.response.defer()
             await self.update_embed(interaction)
+            if interaction.message is None or interaction.message.embeds is None or len(interaction.message.embeds) == 0:
+                return
             top_embed = interaction.message.embeds[0]
-            description, image = list(self.mapping.get(value).values())
+            if top_embed is None:
+                return
+            description, image = list[Any](self.mapping.get(value, {}).values())
             embed = discord.Embed(title = f"Enter the new {value.lower()} below",
                                 color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = description)
             embed.set_image(url = image)
             await interaction.message.edit(embeds = [top_embed, embed], view = None)
-            def check(m):
+            def check(m, *, _guild: discord.Guild = guild):
                 if value == "Roles" or value == "Pings":
                     for role in m.content.split(" "):
                         try:
-                            if not interaction.guild.get_role(int(role)):
+                            if _guild.get_role(int(role)) is None:
                                 return False
                         except Exception:
                             return False
                 if value == "Category":
                     try:
-                        if not interaction.guild.get_channel(int(m.content)):
+                        if guild.get_channel(int(m.content)) is None:
                             return False
                     except Exception:
                         return False
@@ -127,7 +157,7 @@ class ManageTypeView(discord.ui.View):
             view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
             await interaction.message.edit(view = view)
-            await update_msg(interaction)
+            await ManageTicketsView.update_msg(interaction)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has changed {value} to {new_value} for {self.ticket_category} {self.ticket}")
         except Exception as e:
             log_commands.error(f"Failed to change the value of {value} {e}")
@@ -138,7 +168,8 @@ class ManageTypeView(discord.ui.View):
             await interaction.response.defer()
             view = ManageTicketsView(self.ticket_info, self.ticket_category)
             await view.update_embed(interaction)
-            await interaction.message.edit(view = view)
+            if interaction.message is not None:
+                await interaction.message.edit(view = view)
         except Exception as e:
             log_commands.error(f"{interaction.user} ({interaction.user.id}) has failed to go back {e}")
 
@@ -155,8 +186,9 @@ class ManageTypeView(discord.ui.View):
                 file.truncate()
             view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
-            await interaction.message.edit(view = view)
-            await update_msg(interaction)
+            if interaction.message is not None:
+                await interaction.message.edit(view = view)
+            await ManageTicketsView.update_msg(interaction)
             await interaction.followup.send(content = "Successfully toggled this ticket type.", ephemeral = True)
             log_commands.info(f"{interaction.user} ({interaction.user.id}) has toggled {self.ticket_category} {self.ticket} ticket type to {new_status}")
         except Exception as e:

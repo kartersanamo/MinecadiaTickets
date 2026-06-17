@@ -56,7 +56,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
 
     def _build_detail(self, inner: list, interaction: discord.Interaction, accent: int) -> None:
         row = TicketLogService.row_by_channel(self._rows, self.state.detail_channel_id) or TicketLogService.fetch_row_by_channel(
-            int(self.state.detail_channel_id)
+            int(self.state.detail_channel_id) if self.state.detail_channel_id is not None else 0
         )
         if not row:
             self._header_section(

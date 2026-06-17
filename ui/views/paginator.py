@@ -10,10 +10,10 @@ class Paginator(discord.ui.View):
         super().__init__(timeout=None)
         self.data: list
         self.title: str
-        self.sorted: str = None
+        self.sorted: str | None = None
         self.sep = 5
         self.current_page = 1
-        self.category: discord.Category = None
+        self.category: discord.abc.GuildChannel | None = None
         self.count: bool = False
 
     async def send(self, interaction: discord.Interaction):
@@ -24,22 +24,18 @@ class Paginator(discord.ui.View):
         await self.update_message(interaction)
 
     def create_embed(self):
-        embed = discord.Embed(title=self.title, description="", color=discord.Color.gold())
+        embed = discord.Embed(title=self.title, description=None, color=discord.Color.gold())
         footer_text = self.get_footer_text()
         if self.data[0] == "No data found.":
             embed.description = "No data found."
         else:
             if self.count:
                 for index, item in enumerate(self.get_current_page_data()):
-                    embed.description += (
-                        f"**{(self.sep * self.current_page) - (self.sep - (index + 1))}.** {item}\n"
-                    )
-            else:
-                for item in self.get_current_page_data():
-                    embed.description += f"{item}\n"
-        if footer_text:
-            logo_url = EmbedService.get_logo_url(LOGO)
-            embed.set_footer(icon_url=logo_url, text=footer_text)
+                    embed.description = f"{embed.description}**{(self.sep * self.current_page) - (self.sep - (index + 1))}.** {item}\n"
+        if footer_text is not None:
+            logo_url = EmbedService.get_logo_url(LOGO) if LOGO else None
+            if logo_url is not None:
+                embed.set_footer(icon_url=logo_url, text=footer_text)
         return embed
 
     async def update_message(self, interaction: discord.Interaction):

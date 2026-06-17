@@ -1,4 +1,6 @@
 import discord
+
+from ui.views.manage_type_view import ManageTypeView
 from core.loggers import log_commands
 
 
@@ -15,6 +17,7 @@ class ManageTicketsSelect(discord.ui.Select):
             await interaction.response.defer()
             view = ManageTypeView(self.ticket_info, self.ticket_category, ticket)
             await view.update_embed(interaction)
-            await interaction.message.edit(view = view)
+            if interaction.message is not None:
+                await interaction.message.edit(view = view)
         except Exception as e:
             log_commands.error(f"{interaction.user} ({interaction.user.id}) has failed to select a ticket type in {self.ticket_category} {e}")
