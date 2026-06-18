@@ -18,16 +18,39 @@ from services.ticket_check_service import is_ticket
 class Remove(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
+
+    @staticmethod
+    def _hierarchy_role_ids() -> set[int]:
+        return {
+            role_id
+            for roles in ConfigManager.get("ROLE_HIERARCHY").values()
+            for role_id in roles
+        }
+
+    @classmethod
+    def _get_comparison_role_id(cls, member: discord.Member) -> int | None:
+        disregard_role_ids = set(ConfigManager.get("DISREGARD_REMOVE_COMMAND_ROLE_IDS"))
+        hierarchy_role_ids = cls._hierarchy_role_ids()
+        for role in reversed(member.roles):
+            if role.id in disregard_role_ids:
+                continue
+            if role.id in hierarchy_role_ids:
+                return role.id
+        return None
+
     @TaskDecorator.task("Get Role Level", False)
-    async def get_role_level(self, role_id: int) -> int:
+    async def get_role_level(self, role_id: int) -> int | None:
         for level, roles in enumerate(ConfigManager.get('ROLE_HIERARCHY').values()):
             if role_id in roles:
                 return level
+        return None
 
     @TaskDecorator.task("Is Higher Rank", False)
     async def is_higher_rank(self, role_id1: int, role_id2: int) -> bool:
-        level1: int = await self.get_role_level(role_id1)
-        level2: int = await self.get_role_level(role_id2)
+        level1 = await self.get_role_level(role_id1)
+        level2 = await self.get_role_level(role_id2)
+        if level1 is None or level2 is None:
+            return False
         return level1 > level2
 
     @TaskDecorator.task("Remove Permissions", False)
@@ -48,15 +71,19 @@ class Remove(commands.Cog):
 
     @TaskDecorator.task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:
-        staff_team_role: discord.Role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
-        if staff_team_role in user.roles:
-            disregard_role_ids: list[int] = ConfigManager.get('DISREGARD_REMOVE_COMMAND_ROLE_IDS')
-            role_id_1: int = user.top_role.id if user.top_role.id not in disregard_role_ids else user.roles[-2].id
-            role_id_2: int = interaction.user.top_role.id if interaction.user.top_role.id not in disregard_role_ids else interaction.user.roles[-2].id
-            if await self.is_higher_rank(role_id_1, role_id_2):
-                log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to remove a staff member higher than them {user} ({user.id})")
-                await interaction.response.send_message(content = "You cannot remove a staff member who is higher than you!", ephemeral = True)
-                return True
+        if not isinstance(interaction.user, discord.Member):
+            return False
+        staff_team_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
+        if staff_team_role is None or staff_team_role not in user.roles:
+            return False
+        role_id_1 = self._get_comparison_role_id(user)
+        role_id_2 = self._get_comparison_role_id(interaction.user)
+        if role_id_1 is None or role_id_2 is None:
+            return False
+        if await self.is_higher_rank(role_id_1, role_id_2):
+            log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to remove a staff member higher than them {user} ({user.id})")
+            await interaction.response.send_message(content = "You cannot remove a staff member who is higher than you!", ephemeral = True)
+            return True
         return False
 
     @is_ticket()
