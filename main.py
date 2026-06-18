@@ -151,6 +151,24 @@ class Client(commands.Bot):
         await self._setup_dashboard_http()
         log_tasks.info(msg = "Completed bot setup hook")
 
+    async def on_connect(self) -> None:
+        from core.liveness import mark_connected
+
+        mark_connected()
+        log_tasks.info(msg = "Discord gateway connected")
+
+    async def on_disconnect(self) -> None:
+        from core.liveness import mark_disconnected
+
+        mark_disconnected()
+        log_tasks.warning(msg = "Discord gateway disconnected — awaiting reconnect")
+
+    async def on_resume(self) -> None:
+        from core.liveness import mark_connected
+
+        mark_connected()
+        log_tasks.info(msg = "Bot connection resumed")
+
     @TaskDecorator.task(action_name = "Logging in")
     async def on_ready(self) -> None:
         """Overrides the default on_ready event to perform tasks when the bot is ready."""
