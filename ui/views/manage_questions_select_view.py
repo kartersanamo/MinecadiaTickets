@@ -26,8 +26,6 @@ class ManageQuestionsSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            from ui.views.manage_question_view import ManageQuestionView
-
             question = self.values[0]
             await interaction.response.defer()
             view = ManageQuestionView(self.ticket_info, self.ticket_category, self.ticket, question)
@@ -43,3 +41,6 @@ class ManageQuestionsSelect(discord.ui.Select):
                 self.ticket,
                 e,
             )
+
+
+from ui.views.manage_question_view import ManageQuestionView

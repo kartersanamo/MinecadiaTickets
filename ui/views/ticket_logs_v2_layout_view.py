@@ -9,13 +9,6 @@ from discord.enums import SeparatorSpacing
 
 from core.config import ConfigManager
 from services.ticket_log_service import TicketLogService
-from ui.views.t_l_back_button_view import TLBackButton
-from ui.views.t_l_jump_button_modal import TLJumpButton
-from ui.views.t_l_mode_select_view import TLModeSelect
-from ui.views.t_l_page_button_view import TLPageButton
-from ui.views.t_l_pick_select_view import TLPickSelect
-from ui.views.t_l_sort_select_view import TLSortSelect
-from ui.views.t_l_type_select_view import TLTypeSelect
 from ui.views.ticket_log_u_i_state_view import TicketLogUIState
 
 
@@ -40,7 +33,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
 
         self.add_item(discord.ui.Container(*inner, accent_color=accent))
 
-    def _header_section(self, inner: list, title_md: str, interaction: discord.Interaction) -> None:
+    def _header_section(self, inner: list, title_md: str, _interaction: discord.Interaction) -> None:
         if self._thumb:
             inner.append(
                 discord.ui.Section(
@@ -54,7 +47,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
         else:
             inner.append(discord.ui.TextDisplay(title_md))
 
-    def _build_detail(self, inner: list, interaction: discord.Interaction, accent: int) -> None:
+    def _build_detail(self, inner: list, interaction: discord.Interaction, _accent: int) -> None:
         row = TicketLogService.row_by_channel(
             self._rows, self.state.detail_channel_id
         ) or TicketLogService.fetch_row_by_channel(
@@ -83,7 +76,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
         inner.append(ar)
 
     def _build_list(
-        self, inner: list, interaction: discord.Interaction, accent: int, rows: List[Dict[str, Any]]
+        self, inner: list, interaction: discord.Interaction, _accent: int, rows: List[Dict[str, Any]]
     ) -> None:
         total = len(rows)
         max_page = max(0, (total - 1) // TicketLogService.PAGE_SIZE) if total else 0
@@ -136,3 +129,20 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
             return self.content_length()
         except (AttributeError, TypeError, RuntimeError):
             return 0
+
+
+async def refresh_ticket_logs_v2(interaction: discord.Interaction, state: TicketLogUIState) -> None:
+    view = TicketLogsV2Layout(interaction, state)
+    kwargs: dict[str, Any] = {"content": None, "view": view}
+    if view._logo_files:
+        kwargs["attachments"] = view._logo_files
+    await interaction.response.edit_message(**kwargs)
+
+
+from ui.views.t_l_back_button_view import TLBackButton
+from ui.views.t_l_jump_button_modal import TLJumpButton
+from ui.views.t_l_mode_select_view import TLModeSelect
+from ui.views.t_l_page_button_view import TLPageButton
+from ui.views.t_l_pick_select_view import TLPickSelect
+from ui.views.t_l_sort_select_view import TLSortSelect
+from ui.views.t_l_type_select_view import TLTypeSelect

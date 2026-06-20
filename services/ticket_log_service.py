@@ -60,7 +60,8 @@ class TicketLogService:
         uid = int(target_id)
         order_col = "opened_at" if sort_key == "opened_at" else "closed_at"
         q = (
-            "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+            "SELECT channel_id, number, name, type, transcript, reason, privated, "
+            "closed_by_id, owner_id, opened_at, closed_at "
             "FROM tickets WHERE is_active = 0"
         )
         params: list[Any] = []
@@ -79,7 +80,8 @@ class TicketLogService:
     @classmethod
     def fetch_row_by_channel(cls, channel_id: int) -> Optional[Dict[str, Any]]:
         rows = DatabasePool.execute(
-            "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+            "SELECT channel_id, number, name, type, transcript, reason, privated, "
+            "closed_by_id, owner_id, opened_at, closed_at "
             "FROM tickets WHERE channel_id = %s AND is_active = 0 LIMIT 1",
             (int(channel_id),),
         )
@@ -97,7 +99,8 @@ class TicketLogService:
         if not num:
             return None
         q = (
-            "SELECT channel_id, number, name, type, transcript, reason, privated, closed_by_id, owner_id, opened_at, closed_at "
+            "SELECT channel_id, number, name, type, transcript, reason, privated, "
+            "closed_by_id, owner_id, opened_at, closed_at "
             "FROM tickets WHERE is_active = 0 AND number = %s"
         )
         params: list[Any] = [num]
@@ -129,9 +132,9 @@ class TicketLogService:
         interaction: discord.Interaction,
         state: Any,
         slice_rows: List[Dict[str, Any]],
-        total: int,
-        page_count: int,
-        cfg: dict,
+        _total: int,
+        _page_count: int,
+        _cfg: dict,
     ) -> List[str]:
         lines: List[str] = []
         base = state.page * cls.PAGE_SIZE

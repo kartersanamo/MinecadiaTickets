@@ -13,8 +13,6 @@ class ManageCategoriesSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         try:
-            from ui.views.manage_tickets_view import ManageTicketsView
-
             category = self.values[0]
             await interaction.response.defer()
             view = ManageTicketsView(self.ticket_info, category)
@@ -25,3 +23,6 @@ class ManageCategoriesSelect(discord.ui.Select):
             log_commands.error(
                 "%s (%s) has failed to select a ticket category %s", interaction.user, interaction.user.id, e
             )
+
+
+from ui.views.manage_tickets_view import ManageTicketsView

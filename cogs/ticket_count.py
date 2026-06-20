@@ -43,7 +43,8 @@ class TicketCount(commands.Cog):
         active_embed = discord.Embed(
             title="Active Tickets By Category",
             description="\n".join(
-                f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} ({round(row.get('count', 0) / active_count * 100, 2)}%)"
+                f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} "
+                f"({round(row.get('count', 0) / active_count * 100, 2)}%)"
                 for row in active_list
             ),
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
@@ -52,7 +53,8 @@ class TicketCount(commands.Cog):
         history_embed = discord.Embed(
             title="Total Ticket History",
             description="\n".join(
-                f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} ({round(row.get('count', 0) / total_count * 100, 2)}%)"
+                f"> **{row.get('count', 0)}** {row.get('type', 'Unknown')} "
+                f"({round(row.get('count', 0) / total_count * 100, 2)}%)"
                 for row in total_list
             ),
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),

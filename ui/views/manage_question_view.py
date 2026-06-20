@@ -17,11 +17,18 @@ class ManageQuestionView(discord.ui.View):
         self.question = question
         self.mapping = {
             "Label": {
-                "Description": "*This is the label of the question that appears above the text box. The max length on a modal title is 45 characters.*",
+                "Description": (
+                    "*This is the label of the question that appears above the text box. "
+                    "The max length on a modal title is 45 characters.*"
+                ),
                 "Image": "https://i.imgur.com/GrYinyp.png",
             },
             "Placeholder": {
-                "Description": "*This message will be in the text box before the user types anything in. Usually, this is where directions go about what to enter into the text box. The max length of a modal's placeholder is 100 characters.*",
+                "Description": (
+                    "*This message will be in the text box before the user types anything in. Usually, this is where "
+                    "directions go about what to enter into the text box. The max length of a modal's placeholder is "
+                    "100 characters.*"
+                ),
                 "Image": "https://i.imgur.com/Ad07AYo.png",
             },
         }
@@ -128,10 +135,8 @@ class ManageQuestionView(discord.ui.View):
             log_commands.error("Failed to change the value of %s %s", value, e)
 
     @discord.ui.button(label="|<", style=discord.ButtonStyle.red, custom_id="go_back_type", row=0, disabled=False)
-    async def go_back_type(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def go_back_type(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
-            from ui.views.manage_type_view import ManageTypeView
-
             await interaction.response.defer()
             view = ManageTypeView(self.ticket_info, self.ticket_category, self.ticket)
             await view.update_embed(interaction)
@@ -143,7 +148,7 @@ class ManageQuestionView(discord.ui.View):
     @discord.ui.button(
         label="Change Label", style=discord.ButtonStyle.grey, custom_id="change_question", row=0, disabled=False
     )
-    async def change_question(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_question(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Label")
 
     @discord.ui.button(
@@ -153,13 +158,13 @@ class ManageQuestionView(discord.ui.View):
         row=0,
         disabled=False,
     )
-    async def change_placeholder(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_placeholder(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Placeholder")
 
     @discord.ui.button(
         label="Change Length", style=discord.ButtonStyle.grey, custom_id="change_length", row=0, disabled=False
     )
-    async def change_length(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_length(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
             guild = interaction.guild
             if guild is None:
@@ -207,6 +212,7 @@ class ManageQuestionView(discord.ui.View):
                 new_length,
             )
         except UI_CALLBACK_ERRORS as e:
-            log_commands.error(
-                "%s (%s) has failed to change the length %s", interaction.user, interaction.user.id, e
-            )
+            log_commands.error("%s (%s) has failed to change the length %s", interaction.user, interaction.user.id, e)
+
+
+from ui.views.manage_type_view import ManageTypeView

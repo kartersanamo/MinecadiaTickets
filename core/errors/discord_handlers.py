@@ -59,7 +59,7 @@ class DiscordErrorHandlers:
             except discord.HTTPException:
                 pass
 
-        def _asyncio_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        def _asyncio_exception_handler(_loop: asyncio.AbstractEventLoop, context: dict) -> None:
             exc = context.get("exception")
             msg = context.get("message", "Unhandled asyncio exception")
             if exc is not None:
@@ -81,7 +81,7 @@ class DiscordErrorHandlers:
         handler = getattr(bot, "_minecadia_asyncio_exception_handler", None)
         if handler is None:
 
-            def _fallback(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+            def _fallback(_loop: asyncio.AbstractEventLoop, context: dict) -> None:
                 exc = context.get("exception")
                 if exc is not None:
                     ExceptionLogging.log_exception(log_tasks, exc, bot_name=bot_name, component="asyncio_task")

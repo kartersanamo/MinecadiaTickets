@@ -73,7 +73,8 @@ class Blacklist(commands.Cog):
     ) -> None:
         unix = await self.get_unix(length)
         DatabasePool.execute(
-            "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) "
+            "VALUES (%s, %s, %s, %s, %s)",
             (user.id, reason or "N/A", interaction.user.id, unix, int(__import__("time").time())),
         )
         log_commands.info("Ticket blacklisted %s (%s) for %s", user, user.id, length)
@@ -96,7 +97,12 @@ class Blacklist(commands.Cog):
         embed = discord.Embed(
             title="Ticket Blacklist",
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
-            description=f"`IGN` {user.display_name}\n`Discord` {user}\n`Reason` {reason or 'N/A'}\n`Expires` <t:{unix}:R>",
+            description=(
+                f"`IGN` {user.display_name}\n"
+                f"`Discord` {user}\n"
+                f"`Reason` {reason or 'N/A'}\n"
+                f"`Expires` <t:{unix}:R>"
+            ),
             timestamp=datetime.datetime.now(datetime.timezone.utc),
         )
         embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.avatar)

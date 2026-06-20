@@ -15,36 +15,63 @@ class ManageTypeView(discord.ui.View):
         self.ticket_category = ticket_category
         self.ticket = ticket
         super().__init__(timeout=None)
-        from ui.views.manage_questions_select_view import ManageQuestionsSelect
-
         self.add_item(ManageQuestionsSelect(self.ticket_info, self.ticket_category, self.ticket))
         self.mapping = {
             "Name": {
-                "Description": "*This is the name of the ticket type, and will be displayed as the name on the drop down item.*",
+                "Description": (
+                    "*This is the name of the ticket type, and will be displayed as the name on the drop down item.*"
+                ),
                 "Image": "https://i.imgur.com/EEcY2HU.png",
             },
             "Emoji": {
-                "Description": "*This emoji will appear next to the ticket type's name after clicking on the ticket category.*",
+                "Description": (
+                    "*This emoji will appear next to the ticket type's name after clicking on the ticket category.*"
+                ),
                 "Image": "https://i.imgur.com/vrgPt9q.png",
             },
             "Description": {
-                "Description": "*This value will be displayed on the line next to the emoji to describe the ticket type.*",
+                "Description": (
+                    "*This value will be displayed on the line next to the emoji to describe the ticket type.*"
+                ),
                 "Image": "https://i.imgur.com/xAsHZjW.png",
             },
             "Message": {
-                "Description": "*This is the message that will be displayed in the ticket once the user opens the ticket. By default, the embed will show their name, the ticket type, and all of their questions/answers. This 'message' (such as revive rules) will be displayed after their last answer. After that will be a general message about staff support.*",
+                "Description": (
+                    "*This is the message that will be displayed in the ticket once the user opens the ticket. "
+                    "By default, the embed will show their name, the ticket type, and all of their questions/answers. "
+                    "This 'message' (such as revive rules) will be displayed after their last answer. "
+                    "After that will be a general message about staff support.*"
+                ),
                 "Image": "https://i.imgur.com/eD4qX3S.png",
             },
             "Roles": {
-                "Description": "*These are the roles that can view the ticket channel when it is opened. By default, anyone with the* `*` *role can view the channel,* `@everyone` *cannot view it, and* `@Staff Team` *cannot view it. Any role in this list will be an addition to what was listed and will be able to view it and send messages. These roles in this list should ALWAYS match the roles that can view and send messages in the channel of the categories permissions. Otherwise, when moving to this category, permissions will adopt the permissions of the category, not the ones in this list.*\n \n`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`",
+                "Description": (
+                    "*These are the roles that can view the ticket channel when it is opened. By default, anyone "
+                    "with the* `*` *role can view the channel,* `@everyone` *cannot view it, and* `@Staff Team` "
+                    "*cannot view it. Any role in this list will be an addition to what was listed and will be able "
+                    "to view it and send messages. These roles in this list should ALWAYS match the roles that can "
+                    "view and send messages in the channel of the categories permissions. Otherwise, when moving to "
+                    "this category, permissions will adopt the permissions of the category, not the ones in this "
+                    "list.*\n \n"
+                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                ),
                 "Image": "https://i.imgur.com/rTZ1k8H.png",
             },
             "Pings": {
-                "Description": "*The pings represent a list of what roles will be pinged when the ticket is opened.*\n \n`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`",
+                "Description": (
+                    "*The pings represent a list of what roles will be pinged when the ticket is opened.*\n \n"
+                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                ),
                 "Image": None,
             },
             "Category": {
-                "Description": "*This is the category that the ticket will be placed under when it is opened. Permissions for all tickets opened under this category are based on the permissions of the category. So please, make sure that the permissions are set up for that category first. For more information on how this works, read the 'Roles' blurb.*\n \n`SEND ONE SINGLE CATEGORY ID. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`",
+                "Description": (
+                    "*This is the category that the ticket will be placed under when it is opened. Permissions for all "
+                    "tickets opened under this category are based on the permissions of the category. So please, make "
+                    "sure that the permissions are set up for that category first. For more information on how this "
+                    "works, read the 'Roles' blurb.*\n \n"
+                    "`SEND ONE SINGLE CATEGORY ID. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                ),
                 "Image": None,
             },
         }
@@ -195,10 +222,8 @@ class ManageTypeView(discord.ui.View):
             log_commands.error("Failed to change the value of %s %s", value, e)
 
     @discord.ui.button(label="|<", style=discord.ButtonStyle.red, custom_id="go_back_type", row=0, disabled=False)
-    async def go_back_type(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def go_back_type(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
-            from ui.views.manage_tickets_view import ManageTicketsView
-
             await interaction.response.defer()
             view = ManageTicketsView(self.ticket_info, self.ticket_category)
             await view.update_embed(interaction)
@@ -210,7 +235,7 @@ class ManageTypeView(discord.ui.View):
     @discord.ui.button(
         label="Toggle Status", style=discord.ButtonStyle.grey, custom_id="toggle_status", row=0, disabled=False
     )
-    async def toggle_status(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def toggle_status(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
             await interaction.response.defer()
             with open("assets/tickets.json", "r+", encoding="utf-8") as file:
@@ -249,13 +274,13 @@ class ManageTypeView(discord.ui.View):
     @discord.ui.button(
         label="Change Name", style=discord.ButtonStyle.grey, custom_id="change_name", row=0, disabled=False
     )
-    async def change_name(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_name(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Name")
 
     @discord.ui.button(
         label="Change Emoji", style=discord.ButtonStyle.grey, custom_id="change_emoji", row=0, disabled=False
     )
-    async def change_emoji(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_emoji(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Emoji")
 
     @discord.ui.button(
@@ -265,29 +290,33 @@ class ManageTypeView(discord.ui.View):
         row=0,
         disabled=False,
     )
-    async def change_description(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_description(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Description")
 
     @discord.ui.button(
         label="Change Category", style=discord.ButtonStyle.grey, custom_id="change_category", row=1, disabled=False
     )
-    async def change_category(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_category(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Category")
 
     @discord.ui.button(
         label="Change Message", style=discord.ButtonStyle.grey, custom_id="change_message", row=1, disabled=False
     )
-    async def change_message(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_message(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Message")
 
     @discord.ui.button(
         label="Change Roles", style=discord.ButtonStyle.grey, custom_id="change_roles", row=1, disabled=False
     )
-    async def change_roles(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_roles(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Roles")
 
     @discord.ui.button(
         label="Change Pings", style=discord.ButtonStyle.grey, custom_id="change_pings", row=1, disabled=False
     )
-    async def change_pings(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def change_pings(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Pings")
+
+
+from ui.views.manage_questions_select_view import ManageQuestionsSelect
+from ui.views.manage_tickets_view import ManageTicketsView

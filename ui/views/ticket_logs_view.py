@@ -17,7 +17,8 @@ class TicketLogs(discord.ui.View):
     @TaskDecorator.task("Get Data", False)
     async def get_data(self, user_id: int):
         rows = DatabasePool.execute(
-            "SELECT opened_at, name, type, transcript, reason FROM tickets WHERE owner_id = %s AND is_active = 0 ORDER BY opened_at",
+            "SELECT opened_at, name, type, transcript, reason FROM tickets "
+            "WHERE owner_id = %s AND is_active = 0 ORDER BY opened_at",
             (user_id,),
         )
         data: list = []
@@ -53,4 +54,4 @@ class TicketLogs(discord.ui.View):
         data: list[str] = await self.get_data(interaction.user.id)
         await self.paginate_send(interaction, data)
 
-        log_tasks.info("Sent the %s button to %s (%s)", Button.emoji, interaction.user, interaction.user.id)
+        log_tasks.info("Sent the %s button to %s (%s)", button.emoji, interaction.user, interaction.user.id)

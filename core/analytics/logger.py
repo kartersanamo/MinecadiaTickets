@@ -20,11 +20,14 @@ except ImportError:
 
 _log = logging.getLogger("analytics")
 
-_DB_ERRORS: tuple[type[BaseException], ...] = (OSError, ValueError, TypeError)
-if mysql_connector is not None:
-    _DB_ERRORS = _DB_ERRORS + (mysql_connector.Error,)
-if pymysql is not None:
-    _DB_ERRORS = _DB_ERRORS + (pymysql.Error,)
+
+def _db_error_types() -> tuple[type[BaseException], ...]:
+    errors: tuple[type[BaseException], ...] = (OSError, ValueError, TypeError)
+    if mysql_connector is not None:
+        errors = errors + (mysql_connector.Error,)
+    if pymysql is not None:
+        errors = errors + (pymysql.Error,)
+    return errors
 
 TOTAL_STAT_FIELDS = frozenset(
     {
@@ -72,7 +75,7 @@ class AnalyticsLogger:
         if mysql_connector is not None:
             try:
                 return mysql_connector.connect(**cfg)
-            except _DB_ERRORS as exc:
+            except _db_error_types() as exc:
                 _log.debug("Analytics mysql.connector connect failed: %s", exc)
         if pymysql is not None:
             try:
@@ -85,7 +88,7 @@ class AnalyticsLogger:
                     autocommit=bool(cfg.get("autocommit", True)),
                     connect_timeout=5,
                 )
-            except _DB_ERRORS as exc:
+            except _db_error_types() as exc:
                 _log.debug("Analytics pymysql connect failed: %s", exc)
         return None
 
@@ -99,7 +102,7 @@ class AnalyticsLogger:
             cur.execute(sql, params)
             cur.close()
             return True
-        except _DB_ERRORS as exc:
+        except _db_error_types() as exc:
             _log.debug("Analytics SQL failed: %s — %s", sql[:80], exc)
             return False
         finally:

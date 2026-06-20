@@ -13,6 +13,7 @@ import logging
 import os
 import threading
 import time
+from dataclasses import dataclass, field
 from typing import Optional
 
 import discord
@@ -27,36 +28,39 @@ GATEWAY_CHECK_INTERVAL = 90
 GATEWAY_FAILURE_THRESHOLD = 2
 GATEWAY_LATENCY_LIMIT = 120.0
 
-_last_heartbeat = time.monotonic()
+
+@dataclass
+class LivenessState:
+    last_heartbeat: float = field(default_factory=time.monotonic)
+    watchdog_started: bool = False
+    disconnected_at: Optional[float] = None
+    gateway_failures: int = 0
+    liveness_task: Optional[asyncio.Task] = None
+    loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+_state = LivenessState()
 _heartbeat_lock = threading.Lock()
-_watchdog_started = False
-_disconnected_at: Optional[float] = None
-_gateway_failures = 0
-_liveness_task: Optional[asyncio.Task] = None
-_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 def touch_heartbeat() -> None:
-    global _last_heartbeat
     with _heartbeat_lock:
-        _last_heartbeat = time.monotonic()
+        _state.last_heartbeat = time.monotonic()
 
 
 def stale_seconds() -> float:
     with _heartbeat_lock:
-        return time.monotonic() - _last_heartbeat
+        return time.monotonic() - _state.last_heartbeat
 
 
 def mark_disconnected() -> None:
-    global _disconnected_at
-    if _disconnected_at is None:
-        _disconnected_at = time.time()
+    if _state.disconnected_at is None:
+        _state.disconnected_at = time.time()
 
 
 def mark_connected() -> None:
-    global _disconnected_at, _gateway_failures
-    _disconnected_at = None
-    _gateway_failures = 0
+    _state.disconnected_at = None
+    _state.gateway_failures = 0
 
 
 def _force_restart(log: logging.Logger, bot_name: str, reason: str) -> None:
@@ -105,10 +109,9 @@ def _start_thread_watchdog(
     log: logging.Logger,
     bot_name: str,
 ) -> None:
-    global _watchdog_started
-    if _watchdog_started:
+    if _state.watchdog_started:
         return
-    _watchdog_started = True
+    _state.watchdog_started = True
     touch_heartbeat()
     thread = threading.Thread(
         target=_watchdog_thread,
@@ -154,54 +157,51 @@ async def _probe_discord(bot: commands.Bot) -> None:
 
 
 async def _verify_gateway(bot: commands.Bot, log: logging.Logger, bot_name: str) -> None:
-    global _gateway_failures
-
     if not bot.is_ready():
         return
 
     try:
         await _probe_discord(bot)
-        _gateway_failures = 0
+        _state.gateway_failures = 0
     except (RuntimeError, asyncio.TimeoutError, *DISCORD_API_ERRORS, OSError) as exc:
-        _gateway_failures += 1
+        _state.gateway_failures += 1
         log.warning(
             "[%s] Discord health check failed (%s/%s): %s",
             bot_name,
-            _gateway_failures,
+            _state.gateway_failures,
             GATEWAY_FAILURE_THRESHOLD,
             exc,
         )
-        if _gateway_failures >= GATEWAY_FAILURE_THRESHOLD:
+        if _state.gateway_failures >= GATEWAY_FAILURE_THRESHOLD:
             _force_restart(
                 log,
                 bot_name,
-                f"Discord health check failed {_gateway_failures} times",
+                f"Discord health check failed {_state.gateway_failures} times",
             )
 
 
 async def _liveness_loop(bot: commands.Bot, log: logging.Logger, bot_name: str) -> None:
-    global _disconnected_at
     last_gateway_check = 0.0
 
     while not bot.is_closed():
         touch_heartbeat()
 
         if bot.is_ready():
-            _disconnected_at = None
+            _state.disconnected_at = None
 
             now = time.monotonic()
             if now - last_gateway_check >= GATEWAY_CHECK_INTERVAL:
                 last_gateway_check = now
                 await _verify_gateway(bot, log, bot_name)
         else:
-            if _disconnected_at is None:
-                _disconnected_at = time.time()
+            if _state.disconnected_at is None:
+                _state.disconnected_at = time.time()
                 log.warning("[%s] Bot not ready — monitoring for reconnect", bot_name)
-            elif time.time() - _disconnected_at > DISCONNECT_RESTART_THRESHOLD:
+            elif time.time() - _state.disconnected_at > DISCONNECT_RESTART_THRESHOLD:
                 _force_restart(
                     log,
                     bot_name,
-                    f"Not ready for {time.time() - _disconnected_at:.0f}s without reconnect",
+                    f"Not ready for {time.time() - _state.disconnected_at:.0f}s without reconnect",
                 )
 
         await asyncio.sleep(30)
@@ -214,12 +214,10 @@ async def start_liveness_monitor(
     bot_name: str,
 ) -> None:
     """Start thread watchdog and asyncio Discord health checks."""
-    global _liveness_task, _loop
+    _state.loop = asyncio.get_running_loop()
+    _start_thread_watchdog(_state.loop, log, bot_name)
 
-    _loop = asyncio.get_running_loop()
-    _start_thread_watchdog(_loop, log, bot_name)
-
-    if _liveness_task is not None and not _liveness_task.done():
+    if _state.liveness_task is not None and not _state.liveness_task.done():
         return
 
-    _liveness_task = asyncio.create_task(_liveness_loop(bot, log, bot_name))
+    _state.liveness_task = asyncio.create_task(_liveness_loop(bot, log, bot_name))

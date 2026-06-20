@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from typing import Any, Optional
@@ -58,8 +59,6 @@ class ConfigManager:
     @classmethod
     async def reload_tickets(cls) -> dict:
         """Reload ticket types from disk (used by manage-tickets UI after edits)."""
-        import asyncio
-
         cls._tickets = await asyncio.to_thread(cls._read_tickets_file)
         return cls._tickets
 

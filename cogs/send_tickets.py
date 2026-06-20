@@ -58,7 +58,8 @@ class TicketsSend(commands.Cog):
                             "**Select a category that best represents your ticket reasoning**:\n\n"
                             ""
                             "**-** Be sure to be as specific and detailed as possible in your ticket.\n"
-                            "**-** Any visual evidence should be uploaded to [Imgur](https://imgur.com/upload) & [YouTube](https://www.youtube.com/).\n"
+                            "**-** Any visual evidence should be uploaded to "
+                            "[Imgur](https://imgur.com/upload) & [YouTube](https://www.youtube.com/).\n"
                             "**-** A staff member will be with you as soon as possible."
                         ),
                     ),

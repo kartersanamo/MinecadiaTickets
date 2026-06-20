@@ -14,8 +14,6 @@ class ManageTicketsSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            from ui.views.manage_type_view import ManageTypeView
-
             ticket = self.values[0]
             await interaction.response.defer()
             view = ManageTypeView(self.ticket_info, self.ticket_category, ticket)
@@ -30,3 +28,6 @@ class ManageTicketsSelect(discord.ui.Select):
                 self.ticket_category,
                 e,
             )
+
+
+from ui.views.manage_type_view import ManageTypeView

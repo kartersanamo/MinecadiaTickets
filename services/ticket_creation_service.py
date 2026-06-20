@@ -1,16 +1,15 @@
-import asyncio
 import json
-import os
 import time
 
-import aiohttp
 import discord
 
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.loggers import log_tasks
+from services.active_ticket_cache import active_ticket_cache
 from services.embed_service import EmbedService
+from ui.views.info_button import InfoButton
 
 LOGO = "assets/Logo.png"
 
@@ -34,40 +33,6 @@ class TicketCreationService:
             return False
         member_role_ids = {int(r.id) for r in user.roles}
         return bool(member_role_ids & bypass_ids)
-
-    async def notify_dashboard_new_ticket(
-        self,
-        channel: discord.TextChannel,
-        number: int,
-        ticket_type: str,
-        owner_id: int,
-    ) -> None:
-        base_url = os.getenv("DASHBOARD_URL", "https://bots.kartersanamo.com").rstrip("/")
-        endpoint = os.getenv("DASHBOARD_TICKET_NOTIFY_URL", "").strip() or f"{base_url}/api/tickets/live-events"
-        secret = os.getenv("TICKETS_BOT_API_SECRET") or os.getenv("CONTROL_API_SECRET")
-        if not endpoint or not secret:
-            return
-
-        payload = {
-            "kind": "ticket_created",
-            "channelId": str(channel.id),
-            "ticketNumber": str(number),
-            "ticketType": str(ticket_type),
-            "ownerId": str(owner_id),
-            "channelName": str(channel.name),
-        }
-        headers = {"X-Tickets-Key": secret, "Content-Type": "application/json"}
-        timeout = aiohttp.ClientTimeout(total=2.5)
-        try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(endpoint, json=payload, headers=headers) as resp:
-                    if resp.status >= 400:
-                        body = await resp.text()
-                        log_tasks.warning(
-                            "Dashboard new-ticket notify failed (%s): %s", resp.status, body[:200]
-                        )
-        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
-            log_tasks.warning("Dashboard new-ticket notify error: %s", e)
 
     @TaskDecorator.task("Get Ticket Count", False)
     async def get_ticket_count(self) -> int:
@@ -321,8 +286,6 @@ class TicketCreationService:
         )
         logo_url = EmbedService.get_logo_url(LOGO)
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
-        from ui.views.info_button import InfoButton
-
         await channel.send(
             embed=embed,
             view=InfoButton(ticket_type, ticket_info),
@@ -334,7 +297,8 @@ class TicketCreationService:
         elif "Management Contact" in ticket_type:
             privated = "Management"
         DatabasePool.execute(
-            "INSERT INTO tickets (channel_id, owner_id, type, opened_at, number, is_active, closed_by_id, closed_at, reason, name, transcript, privated) "
+            "INSERT INTO tickets (channel_id, owner_id, type, opened_at, number, is_active, "
+            "closed_by_id, closed_at, reason, name, transcript, privated) "
             "VALUES (%s, %s, %s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s)",
             (
                 channel.id,
@@ -346,8 +310,6 @@ class TicketCreationService:
                 privated or None,
             ),
         )
-        from services.active_ticket_cache import active_ticket_cache
-
         active_ticket_cache.register(channel.id, interaction.user.id)
 
         return channel

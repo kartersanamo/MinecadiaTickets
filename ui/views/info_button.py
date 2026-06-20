@@ -16,7 +16,7 @@ class InfoButton(discord.ui.View):
         style=discord.ButtonStyle.grey,
         custom_id="enter_information",
     )
-    async def enter_information_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def enter_information_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
             await interaction.response.send_modal(Questions(self.ticket_type, self.ticket_info))
             log_tasks.info("Sent the Questions modal to %s (%s)", interaction.user, interaction.user.id)

@@ -9,6 +9,7 @@ from core.decorators import TaskDecorator
 from core.errors.exceptions import UI_CALLBACK_ERRORS
 from core.loggers import log_tasks
 from services.embed_service import EmbedService
+from services.dashboard_notify import notify_dashboard_new_ticket
 
 
 class Questions(discord.ui.Modal):
@@ -145,10 +146,8 @@ class Questions(discord.ui.Modal):
 
             rows = DatabasePool.execute("SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (channel.id,))
             if rows:
-                from services.ticket_creation_service import TicketCreationService as TicketSystem
-
                 asyncio.create_task(
-                    TicketSystem().notify_dashboard_new_ticket(
+                    notify_dashboard_new_ticket(
                         channel=channel,
                         number=int(rows[0]["number"]),
                         ticket_type=self.ticket_type,

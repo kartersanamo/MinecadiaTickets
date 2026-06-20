@@ -26,6 +26,7 @@ from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_member, require_text_channel
 from core.errors.exceptions import DISCORD_API_ERRORS
 from core.loggers import log_commands, log_tasks
+from services.active_ticket_cache import active_ticket_cache
 from services.statistics_service import is_found
 from services.ticket_check_service import is_ticket
 
@@ -144,7 +145,12 @@ class Close(commands.Cog):
         closed_by_id: int,
     ) -> str:
         content: str = (
-            f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
+            f"Minecadia Tickets Bot: {ticket_type}\n"
+            f"- Opened by: {owner} ({owner_id})\n"
+            f"- Opened at: {opened_string}\n"
+            f"- Channel ID: {channel_id}\n"
+            f"- Ticket ID: {ticket_number}\n \n"
+            "──────────────────────────────────────────────────────\n \n"
         )
         for message in messages:
             try:
@@ -167,7 +173,12 @@ class Close(commands.Cog):
                     error,
                 )
 
-        content += f"──────────────────────────────────────────────────────\n\n- Closure Reason: {reason}\n- Closed By: {closed_by} ({closed_by_id})\n- Closed At: {closed_at_string}"
+        content += (
+            f"──────────────────────────────────────────────────────\n\n"
+            f"- Closure Reason: {reason}\n"
+            f"- Closed By: {closed_by} ({closed_by_id})\n"
+            f"- Closed At: {closed_at_string}"
+        )
 
         return content
 
@@ -189,7 +200,13 @@ class Close(commands.Cog):
             seconds = closed_at_timestamp - opened_timestamp
             delta = self.client.app.time_format.seconds_to_format(seconds)
 
-        desc = f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n **Reason:** {reason}\n **Owner:** {owner_mention} / {owner.name}\n **Ticket Duration:** {delta}\n[Ticket Transcript]({link})"
+        desc = (
+            f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n"
+            f" **Reason:** {reason}\n"
+            f" **Owner:** {owner_mention} / {owner.name}\n"
+            f" **Ticket Duration:** {delta}\n"
+            f"[Ticket Transcript]({link})"
+        )
         embed = discord.Embed(color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc)
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
@@ -246,15 +263,14 @@ class Close(commands.Cog):
         new_ticket_closed_stat: int = tickets_closed_stat + 1
 
         DatabasePool.execute(
-            "UPDATE tickets SET is_active = 0, closed_by_id = %s, closed_at = %s, reason = %s, name = %s, transcript = %s WHERE channel_id = %s",
+            "UPDATE tickets SET is_active = 0, closed_by_id = %s, closed_at = %s, "
+            "reason = %s, name = %s, transcript = %s WHERE channel_id = %s",
             (closed_by_id, closed_at_timestamp, reason, name, link, channel_id),
         )
         DatabasePool.execute(
             "UPDATE staff_statistics SET tickets_closed = %s WHERE user_id = %s",
             (new_ticket_closed_stat, closed_by_id),
         )
-        from services.active_ticket_cache import active_ticket_cache
-
         active_ticket_cache.unregister(channel_id)
         analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 

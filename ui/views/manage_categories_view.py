@@ -12,8 +12,6 @@ class ManageCategoriesView(discord.ui.View):
     def __init__(self, ticket_info) -> None:
         super().__init__(timeout=None)
         self.ticket_info = ticket_info
-        from ui.views.manage_categories_select_view import ManageCategoriesSelect
-
         self.add_item(ManageCategoriesSelect(self.ticket_info))
 
     async def update_embed(self, interaction: discord.Interaction):
@@ -35,7 +33,7 @@ class ManageCategoriesView(discord.ui.View):
     @discord.ui.button(
         label="Toggle All Tickets", style=discord.ButtonStyle.red, custom_id="toggle_all_tickets", row=0, disabled=False
     )
-    async def toggle_all_tickets(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def toggle_all_tickets(self, interaction: discord.Interaction, _button: discord.ui.Button):
         try:
             await interaction.response.defer()
             with open("assets/tickets.json", "r+", encoding="utf-8") as file:
@@ -57,3 +55,6 @@ class ManageCategoriesView(discord.ui.View):
             log_commands.error(
                 "%s (%s) has failed to toggle all tickets %s", interaction.user, interaction.user.id, e
             )
+
+
+from ui.views.manage_categories_select_view import ManageCategoriesSelect

@@ -9,6 +9,7 @@ from mysql.connector import Error as MySQLConnectorError
 from mysql.connector import pooling
 
 from core.config import ConfigManager
+from core.errors.db import DatabaseErrors
 from core.loggers import log_tasks
 
 log = logging.getLogger("Tasks")
@@ -62,8 +63,6 @@ class DatabasePool:
                 rows = cursor.fetchall()
             cursor.close()
         except (MySQLConnectorError, OSError, ValueError, TypeError) as error:
-            from core.errors.db import DatabaseErrors
-
             DatabaseErrors.log_db_failure(log_tasks, error, query_hint=query)
         finally:
             if connection is not None:

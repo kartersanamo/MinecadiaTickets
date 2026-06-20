@@ -7,6 +7,7 @@ import logging
 from discord.ext import commands
 
 from core.errors.discord_handlers import DiscordErrorHandlers
+from core.liveness import start_liveness_monitor
 
 
 class ErrorSetup:
@@ -33,7 +34,5 @@ class ErrorSetup:
         log_tasks: logging.Logger,
     ) -> None:
         DiscordErrorHandlers.install_asyncio_exception_handler(bot, log_tasks=log_tasks, bot_name=bot_name)
-
-        from core.liveness import start_liveness_monitor
 
         await start_liveness_monitor(bot, log=log_tasks, bot_name=bot_name)

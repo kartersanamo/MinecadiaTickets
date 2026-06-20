@@ -6,6 +6,7 @@ import logging
 from typing import TypeVar
 
 from core.errors.exceptions import ExternalServiceError
+from core.errors.logging import ExceptionLogging
 
 T = TypeVar("T")
 
@@ -30,8 +31,6 @@ class DatabaseErrors:
 
     @staticmethod
     def log_db_failure(logger: logging.Logger, exc: BaseException, *, query_hint: str = "") -> None:
-        from core.errors.logging import ExceptionLogging
-
         ExceptionLogging.log_exception(
             logger,
             exc,

@@ -10,6 +10,16 @@ from discord.ext import commands
 
 from core.errors.exceptions import UserFacingError
 
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None  # type: ignore[assignment,misc]
+
+try:
+    import requests
+except ImportError:
+    requests = None  # type: ignore[assignment,misc]
+
 
 class ErrorMessages:
     DEFAULT_UNEXPECTED = "Something went wrong. Please try again later."
@@ -89,16 +99,6 @@ class ErrorMessages:
     @classmethod
     def external_service_message(cls, exc: BaseException) -> str:
         """Map requests/aiohttp/DB errors to user text."""
-        try:
-            import aiohttp
-        except ImportError:
-            aiohttp = None  # type: ignore
-
-        try:
-            import requests
-        except ImportError:
-            requests = None  # type: ignore
-
         if isinstance(exc, asyncio.TimeoutError):
             return "The service is taking too long to respond. Please try again later."
 

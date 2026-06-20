@@ -81,19 +81,19 @@ class Paginator(discord.ui.View):
         await self.update_message(interaction)
 
     @discord.ui.button(label="|<", style=discord.ButtonStyle.gray, disabled=True, custom_id="lskip")
-    async def first_page_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def first_page_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.handle_page_button(interaction, 1 - self.current_page)
 
     @discord.ui.button(label="<", style=discord.ButtonStyle.gray, disabled=True, custom_id="left")
-    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def prev_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.handle_page_button(interaction, -1)
 
     @discord.ui.button(label=">", style=discord.ButtonStyle.gray, disabled=True, custom_id="right")
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def next_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.handle_page_button(interaction, 1)
 
     @discord.ui.button(label=">|", style=discord.ButtonStyle.gray, disabled=True, custom_id="rskip")
-    async def last_page_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def last_page_button(self, interaction: discord.Interaction, _button: discord.ui.Button):
         total_pages = int(len(self.data) / self.sep)
         total_pages += 1 if int(len(self.data)) % self.sep != 0 else 0
         await self.handle_page_button(interaction, total_pages - self.current_page)

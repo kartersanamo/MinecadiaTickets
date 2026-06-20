@@ -76,7 +76,7 @@ class Private(commands.Cog):
         await self.change_category(channel, category)
         await self.update_database(channel.id, "Admin")
 
-        def check(before: discord.abc.GuildChannel, after: discord.abc.GuildChannel) -> bool:
+        def check(_before: discord.abc.GuildChannel, after: discord.abc.GuildChannel) -> bool:
             return after.id == channel.id and after.category == category
 
         try:
@@ -110,7 +110,7 @@ class Private(commands.Cog):
         await self.change_category(channel, category)
         await self.update_database(channel.id, "Management")
 
-        def check(before: discord.abc.GuildChannel, after: discord.abc.GuildChannel) -> bool:
+        def check(_before: discord.abc.GuildChannel, after: discord.abc.GuildChannel) -> bool:
             return after.id == channel.id and after.category == category
 
         try:
