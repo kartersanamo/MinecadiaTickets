@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import discord
@@ -190,7 +190,7 @@ class TicketLogService:
     @classmethod
     def format_select_option_date(cls, ts: int) -> str:
         try:
-            dt = datetime.fromtimestamp(int(ts), tz=pytz.UTC).astimezone(pytz.timezone("US/Eastern"))
+            dt = datetime.fromtimestamp(int(ts), tz=timezone.utc).astimezone(pytz.timezone("US/Eastern"))
         except (TypeError, ValueError, OSError):
             return "Unknown date"
         return f"{dt.strftime('%A')} {dt.strftime('%B')} {cls.ordinal_day(dt.day)}, {dt.year}"

@@ -5,7 +5,7 @@ from core.loggers import log_commands
 class ManageCategoriesSelect(discord.ui.Select):
     def __init__(self, ticket_info) -> None:
         self.ticket_info = ticket_info
-        labels = [category_name for category_name in list[Any](self.ticket_info.keys())]
+        labels = list(self.ticket_info.keys())
         options = [discord.SelectOption(label = label) for label in labels]
         super().__init__(placeholder = "Select a ticket category to manage...", options = options)
     async def callback(self, interaction: discord.Interaction) -> None:

@@ -83,8 +83,7 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
     def _build_list(self, inner: list, interaction: discord.Interaction, accent: int, rows: List[Dict[str, Any]]) -> None:
         total = len(rows)
         max_page = max(0, (total - 1) // TicketLogService.PAGE_SIZE) if total else 0
-        if self.state.page > max_page:
-            self.state.page = max_page
+        self.state.page = min(self.state.page, max_page)
 
         title = (
             f"# Ticket Logs\n"

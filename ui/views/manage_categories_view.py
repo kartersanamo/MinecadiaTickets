@@ -22,9 +22,8 @@ class ManageCategoriesView(discord.ui.View):
                                 color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')),
                                 description = "Select Category")
             for ticket_cat in list[Any](self.ticket_info.keys()):
-                val = ""
-                for ticket_type in list[Any](self.ticket_info.get(ticket_cat, {}).keys()):
-                    val += f"\t `»` {ticket_type}\n"
+                ticket_types = self.ticket_info.get(ticket_cat, {})
+                val = "".join(f"\t `»` {ticket_type}\n" for ticket_type in ticket_types)
                 main_menu_embed.add_field(name = ticket_cat, value = val)
             await interaction.edit_original_response(embed = main_menu_embed, content = None)
         except Exception as e:

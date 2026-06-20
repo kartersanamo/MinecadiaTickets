@@ -1,6 +1,53 @@
+[MAIN]
+init-hook='import sys, os; root=os.path.abspath("."); sys.path[:0] = [root, os.path.join(root, ".venv/lib/python3.11/site-packages")]'
+
 [MESSAGES CONTROL]
 disable=
     missing-class-docstring,
     missing-function-docstring,
     missing-module-docstring,
-    wrong-import-position
+    wrong-import-position,
+    wrong-import-order,
+    ungrouped-imports,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-arguments,
+    too-many-instance-attributes,
+    too-many-return-statements,
+    too-many-positional-arguments,
+    too-few-public-methods,
+    broad-exception-caught,
+    f-string-without-interpolation,
+    logging-fstring-interpolation,
+    import-outside-toplevel,
+    unused-argument,
+    unused-import,
+    no-member,
+    protected-access,
+    line-too-long,
+    trailing-whitespace,
+    trailing-newlines,
+    missing-final-newline,
+    invalid-name,
+    cyclic-import,
+    duplicate-code,
+    unspecified-encoding,
+    global-statement,
+    consider-using-in,
+    consider-using-max-builtin,
+    useless-return,
+    consider-using-ternary,
+    use-implicit-booleaness-not-comparison,
+    bad-indentation,
+    dangerous-default-value,
+    expression-not-assigned,
+    attribute-defined-outside-init,
+    redefined-outer-name,
+    consider-using-with
+
+[TYPECHECK]
+ignored-modules=discord,discord.ext,aiohttp,dotenv,mysql,pymysql,aiomysql,cachetools
+
+[FORMAT]
+max-line-length=120

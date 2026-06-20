@@ -7,24 +7,27 @@ It is used to close a ticket channel and generate a transcript.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
+
+import asyncio
+import datetime
+import time
+
+import discord
+import pytz
+import requests
+from discord import app_commands
 from discord.ext import commands
 
 from core.analytics import logger as analytics
-from discord import app_commands
-import datetime
-import requests
-import discord
-import asyncio
-import time
-import pytz
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_member, require_text_channel
 from core.loggers import log_commands, log_tasks
-from services.ticket_check_service import is_ticket
 from services.statistics_service import is_found
+from services.ticket_check_service import is_ticket
+
 
 class Close(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
@@ -32,71 +35,73 @@ class Close(commands.Cog):
 
     def convert_to_est(self, timestamp: int | float | str) -> str:
         try:
-            est_time = datetime.datetime.fromtimestamp(int(float(timestamp)), tz = pytz.utc).astimezone(pytz.timezone('US/Eastern'))
-            return est_time.strftime('%a, %b %d, %Y, %I:%M:%S %p') + " EST"
-        
+            est_time = datetime.datetime.fromtimestamp(
+                int(float(timestamp)), tz=pytz.utc
+            ).astimezone(pytz.timezone("US/Eastern"))
+            return est_time.strftime("%a, %b %d, %Y, %I:%M:%S %p") + " EST"
+
         except Exception as error:
             log_commands.warning(f"Failed to convert the timestamp to EST {error}")
             return "N/A"
 
     @TaskDecorator.task("Get Transcript Link")
     async def return_link(self, content) -> str:
-        url: str = 'https://paste.minecadia.com/documents'
+        url: str = "https://paste.minecadia.com/documents"
         headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
         }
-        response = requests.post(url, headers=headers, data = content.encode("utf-8"))
+        response = requests.post(url, headers=headers, data=content.encode("utf-8"), timeout=30)
         response_data = response.json()
-        key = response_data['key']
+        key = response_data["key"]
         return f"https://paste.minecadia.com/{key}"
-        
-        #url: str = 'https://paste.md-5.net/documents'
+
+        # url: str = 'https://paste.md-5.net/documents'
         #
-        #try:
+        # try:
         #    async with aiohttp.ClientSession() as session:
         #        response = await session.post(url, data=content.encode("utf-8"))
         #        response_data = await response.json()
         #        key = response_data['key']
         #        return f"https://paste.md-5.net/{key}"
-        #except aiohttp.ClientError as e:
+        # except aiohttp.ClientError as e:
         #    log_tasks.warning(f"Failed to get link: {e}")
-        #except asyncio.TimeoutError:
+        # except asyncio.TimeoutError:
         #    log_tasks.warning("Request to paste.md-5.net timed out.")
         #
-        #return "https://paste.md-5.net/"
+        # return "https://paste.md-5.net/"
 
     @TaskDecorator.task("Fetch All Messages")
     async def fetch_all_messages(self, channel: discord.TextChannel) -> list[discord.Message]:
-        return [message async for message in channel.history(limit = None, oldest_first = True)]
+        return [message async for message in channel.history(limit=None, oldest_first=True)]
 
     @TaskDecorator.task("Format Embed")
     async def format_embed_content(self, embed: discord.Embed) -> str:
         message_content = ""
         lengths = []
         dictionary = embed.to_dict()
-        title = dictionary.get('title', '')
-        description = dictionary.get('description', '')
-        fields = dictionary.get('fields', [])
-        footer = dictionary.get('footer', {}).get('text', '')
-                
+        title = dictionary.get("title", "")
+        description = dictionary.get("description", "")
+        fields = dictionary.get("fields", [])
+        footer = dictionary.get("footer", {}).get("text", "")
+
         if title:
             lengths.append(len(title))
         if description:
             for line in description.split("\n"):
                 lengths.append(len(line))
         for field in fields:
-            field_name = field.get('name', '')
-            field_value = field.get('value', '')
+            field_name = field.get("name", "")
+            field_value = field.get("value", "")
             lengths.append(len(field_name))
             lengths.append(len(field_value))
         if footer:
             lengths.append(len(footer))
-                
+
         if lengths:
             max_length = min(max(lengths), 100)
         else:
             return ""
-                
+
         message_content += "/" + "-" * (int(max_length) + 2) + "\\\n"
         new_line = " "
         if title:
@@ -113,8 +118,8 @@ class Close(commands.Cog):
                     message_content += f"| {sub:{max_length}} |\n"
             message_content += f"| {new_line:{max_length}} |\n"
         for field in fields:
-            field_name = field.get('name', '')
-            field_value = field.get('value', '')
+            field_name = field.get("name", "")
+            field_value = field.get("value", "")
             message_content += f"| {field_name:{max_length}} |\n{field_value:{max_length}} |\n"
         if footer:
             message_content += f"| {footer:{max_length}} |\n"
@@ -123,8 +128,23 @@ class Close(commands.Cog):
         return message_content
 
     @TaskDecorator.task("Generate Transcript Content")
-    async def generate_transcript_content(self, messages: list[discord.Message], opened_string: str, ticket_type: str, ticket_number: str, owner: discord.abc.User, owner_id: int, reason: str, closed_by: discord.Member, channel_id: int, closed_at_string: str, closed_by_id: int) -> str:
-        content: str = f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
+    async def generate_transcript_content(
+        self,
+        messages: list[discord.Message],
+        opened_string: str,
+        ticket_type: str,
+        ticket_number: str,
+        owner: discord.abc.User,
+        owner_id: int,
+        reason: str,
+        closed_by: discord.Member,
+        channel_id: int,
+        closed_at_string: str,
+        closed_by_id: int,
+    ) -> str:
+        content: str = (
+            f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
+        )
         for message in messages:
             try:
                 message_content: str = message.content
@@ -138,29 +158,41 @@ class Close(commands.Cog):
                 content += "\n\n"
 
             except Exception as error:
-                log_tasks.warning(f"Failed logging message {message.author} ({message.author.id}): {message.content} {error}")
-        
+                log_tasks.warning(
+                    f"Failed logging message {message.author} ({message.author.id}): {message.content} {error}"
+                )
+
         content += f"──────────────────────────────────────────────────────\n\n- Closure Reason: {reason}\n- Closed By: {closed_by} ({closed_by_id})\n- Closed At: {closed_at_string}"
 
         return content
 
     @TaskDecorator.task("Get Ticketlog Embed")
-    async def get_ticket_log(self, reason: str, opened_timestamp: int | str, ticket_number: str, owner_mention: str, owner: discord.abc.User, link: str, ticket_type: str, closed_at_timestamp: int, closed_by: discord.Member) -> discord.Embed:
+    async def get_ticket_log(
+        self,
+        reason: str,
+        opened_timestamp: int | str,
+        ticket_number: str,
+        owner_mention: str,
+        owner: discord.abc.User,
+        link: str,
+        ticket_type: str,
+        closed_at_timestamp: int,
+        closed_by: discord.Member,
+    ) -> discord.Embed:
         delta = "N/A"
         if isinstance(opened_timestamp, int):
             seconds = closed_at_timestamp - opened_timestamp
             delta = self.client.app.time_format.seconds_to_format(seconds)
-        
+
         desc = f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n **Reason:** {reason}\n **Owner:** {owner_mention} / {owner.name}\n **Ticket Duration:** {delta}\n[Ticket Transcript]({link})"
         embed = discord.Embed(
-            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
-            description = desc
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc
         )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
-        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
 
         return embed
-    
+
     @TaskDecorator.task("Send Ticketlog", False)
     async def send_ticket_log(
         self,
@@ -172,18 +204,14 @@ class Close(commands.Cog):
         channel_json_string = (
             "ADMIN_TICKET_LOGS_ID"
             if privated == "Admin"
-            else "MANAGEMENT_TICKET_LOGS_ID"
-            if privated == "Management"
-            else "TICKET_LOGS_ID"
+            else "MANAGEMENT_TICKET_LOGS_ID" if privated == "Management" else "TICKET_LOGS_ID"
         )
         ticket_log_channel_id = ConfigManager.get("CHANNEL_IDS")[channel_json_string]
         ticket_log_channel = guild.get_channel(ticket_log_channel_id)
         if not isinstance(ticket_log_channel, discord.TextChannel):
             log_tasks.warning("Ticket log channel %s is unavailable", ticket_log_channel_id)
             return
-        await ticket_log_channel.send(
-            embed=embed, file=discord.File("assets/Logo.png")
-        )
+        await ticket_log_channel.send(embed=embed, file=discord.File("assets/Logo.png"))
 
         tasks = [
             overwrite.create_dm()
@@ -229,15 +257,25 @@ class Close(commands.Cog):
         from services.active_ticket_cache import active_ticket_cache
 
         active_ticket_cache.unregister(channel_id)
-        if analytics:
-            analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
+        analytics.increment_total_stat(str(closed_by_id), "tickets_closed", 1)
 
     @TaskDecorator.task("Fetch Ticket Info")
     async def fetch_ticket_info(self, channel_id: int) -> tuple:
         bot_account = self.client.user
         if bot_account is None:
             raise RuntimeError("Bot user is not available")
-        info = (bot_account, bot_account.id, bot_account.mention, 0, "N/A", "0000", "Unknown", "", 0, "")
+        info = (
+            bot_account,
+            bot_account.id,
+            bot_account.mention,
+            0,
+            "N/A",
+            "0000",
+            "Unknown",
+            "",
+            0,
+            "",
+        )
         row = DatabasePool.execute(
             "SELECT number, opened_at, privated, type, owner_id FROM tickets WHERE channel_id = %s",
             (channel_id,),
@@ -254,20 +292,31 @@ class Close(commands.Cog):
             owner_mention: str = owner.mention
             closed_at_timestamp: int = int(time.time())
             closed_at_string: str = self.convert_to_est(closed_at_timestamp)
-            info = (owner, owner_id, owner_mention, opened_timestamp, opened_string, ticket_number, ticket_type, privated, closed_at_timestamp, closed_at_string)
+            info = (
+                owner,
+                owner_id,
+                owner_mention,
+                opened_timestamp,
+                opened_string,
+                ticket_number,
+                ticket_type,
+                privated,
+                closed_at_timestamp,
+                closed_at_string,
+            )
 
         return info
 
     @TaskDecorator.task("Get Ticket Count")
     async def get_ticket_count(self) -> int:
         row = DatabasePool.execute("SELECT COUNT(*) FROM tickets WHERE is_active = 1")
-        return int(row[0]['COUNT(*)'])
+        return int(row[0]["COUNT(*)"])
 
     @is_ticket()
     @app_commands.guild_only()
-    @app_commands.checks.cooldown(1, 10.0, key = lambda i: (i.channel_id, i.user.id))
-    @app_commands.command(name = "close", description = "Closes the ticket channel")
-    @app_commands.describe(reason = "The reason for closing the ticket")
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.channel_id, i.user.id))
+    @app_commands.command(name="close", description="Closes the ticket channel")
+    @app_commands.describe(reason="The reason for closing the ticket")
     async def close(self, interaction: discord.Interaction, reason: str) -> None:
         await self.close_command(interaction, reason)
 
@@ -355,7 +404,6 @@ class Close(commands.Cog):
         log_commands.info(
             f"Closed #{name} ({channel_id}) in {str(round((time.perf_counter() - start), 2))}s by {closed_by} ({closed_by_id}) {ticket_count}"
         )
-
 
 
 async def setup(client: TicketsBot) -> None:

@@ -107,7 +107,7 @@ LOGGING_CONFIG: dict[str, Any] = {
 
 logging.config.dictConfig(config = LOGGING_CONFIG)
 
-for logger_name in LOGGING_CONFIG["loggers"].keys():
+for logger_name in LOGGING_CONFIG["loggers"]:
     logger: logging.Logger = logging.getLogger(name = logger_name)
     for handler in logger.handlers:
         if isinstance(handler, TimedRotatingFileHandler):

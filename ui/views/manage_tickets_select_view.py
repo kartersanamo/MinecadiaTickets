@@ -7,7 +7,7 @@ class ManageTicketsSelect(discord.ui.Select):
     def __init__(self, ticket_info, ticket_category) -> None:
         self.ticket_info = ticket_info
         self.ticket_category = ticket_category
-        labels = [category_name for category_name in list(self.ticket_info.get(self.ticket_category).keys())]
+        labels = list(self.ticket_info.get(self.ticket_category).keys())
         options = [discord.SelectOption(label = label) for label in labels]
         super().__init__(placeholder = "Select a ticket type to manage...", options = options)
     async def callback(self, interaction: discord.Interaction):

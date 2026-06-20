@@ -11,6 +11,7 @@
   "stubPath": "typings",
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": false,
+  "reportDuplicateImport": false,
   "executionEnvironments": [
     {
       "root": ".",
