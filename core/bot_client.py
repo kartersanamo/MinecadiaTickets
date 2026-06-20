@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
 
-from core.app import BotApp
+if TYPE_CHECKING:
+    from core.app import BotApp
 
 
 class TicketsBot(commands.Bot):
-    app: BotApp
+    app: "BotApp"

@@ -53,14 +53,16 @@ class ManageTypeView(discord.ui.View):
                     "view and send messages in the channel of the categories permissions. Otherwise, when moving to "
                     "this category, permissions will adopt the permissions of the category, not the ones in this "
                     "list.*\n \n"
-                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. "
+                    "ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
                 ),
                 "Image": "https://i.imgur.com/rTZ1k8H.png",
             },
             "Pings": {
                 "Description": (
                     "*The pings represent a list of what roles will be pinged when the ticket is opened.*\n \n"
-                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                    "`SEND THE ROLE IDs OF EACH ROLE SEPERATED BY A SPACE. "
+                    "ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
                 ),
                 "Image": None,
             },
@@ -169,7 +171,7 @@ class ManageTypeView(discord.ui.View):
             await interaction.message.edit(embeds=[top_embed, embed], view=None)
 
             def check(m, *, _guild: discord.Guild = guild):
-                if value == "Roles" or value == "Pings":
+                if value in ("Roles", "Pings"):
                     for role in m.content.split(" "):
                         try:
                             if _guild.get_role(int(role)) is None:

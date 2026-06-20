@@ -11,6 +11,8 @@ License: MIT
 import asyncio
 import datetime
 import time
+from dataclasses import dataclass
+from typing import Any, cast
 
 import discord
 import pytz
@@ -24,11 +26,95 @@ from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_member, require_text_channel
-from core.errors.exceptions import DISCORD_API_ERRORS
+from core.errors.exceptions import DM_BROADCAST_ERRORS, MESSAGE_CONTENT_ERRORS
 from core.loggers import log_commands, log_tasks
 from services.active_ticket_cache import active_ticket_cache
 from services.statistics_service import is_found
 from services.ticket_check_service import is_ticket
+
+
+@dataclass(frozen=True)
+class TranscriptHeader:
+    opened_string: str
+    ticket_type: str
+    ticket_number: str
+    owner: discord.abc.User
+    owner_id: int
+    channel_id: int
+
+
+@dataclass(frozen=True)
+class TranscriptClosure:
+    reason: str
+    closed_by: discord.Member
+    closed_at_string: str
+    closed_by_id: int
+
+
+@dataclass(frozen=True)
+class TicketLogSummary:
+    reason: str
+    ticket_number: str
+    ticket_type: str
+    owner_mention: str
+    owner: discord.abc.User
+    link: str
+    closed_by: discord.Member
+
+
+@dataclass(frozen=True)
+class TicketLogTiming:
+    opened_timestamp: int | str
+    closed_at_timestamp: int
+
+
+def _embed_component_lengths(embed_dict: dict) -> list[int]:
+    lengths: list[int] = []
+    title = embed_dict.get("title", "")
+    description = embed_dict.get("description", "")
+    fields = embed_dict.get("fields", [])
+    footer = embed_dict.get("footer", {}).get("text", "")
+
+    if title:
+        lengths.append(len(title))
+    if description:
+        for line in description.split("\n"):
+            lengths.append(len(line))
+    for field in fields:
+        lengths.append(len(field.get("name", "")))
+        lengths.append(len(field.get("value", "")))
+    if footer:
+        lengths.append(len(footer))
+    return lengths
+
+
+def _render_embed_table(embed_dict: dict, max_length: int) -> str:
+    title = embed_dict.get("title", "")
+    description = embed_dict.get("description", "")
+    fields = embed_dict.get("fields", [])
+    footer = embed_dict.get("footer", {}).get("text", "")
+    message_content = "/" + "-" * (int(max_length) + 2) + "\\\n"
+    blank_row = " "
+
+    if title:
+        message_content += f"| {title:{max_length}} |\n"
+        message_content += f"| {blank_row:{max_length}} |\n"
+    if description:
+        for line in description.split("\n"):
+            index = 0
+            while index < len(line):
+                sub = line[index : index + 100]
+                message_content += f"| {sub:{max_length}} |\n"
+                index += 100
+        message_content += f"| {blank_row:{max_length}} |\n"
+    for field in fields:
+        field_name = field.get("name", "")
+        field_value = field.get("value", "")
+        message_content += f"| {field_name:{max_length}} |\n{field_value:{max_length}} |\n"
+    if footer:
+        message_content += f"| {footer:{max_length}} |\n"
+    message_content += "\\" + "-" * (int(max_length) + 2) + "/"
+    return message_content
 
 
 class Close(commands.Cog):
@@ -78,139 +164,76 @@ class Close(commands.Cog):
 
     @TaskDecorator.task("Format Embed")
     async def format_embed_content(self, embed: discord.Embed) -> str:
-        message_content = ""
-        lengths = []
-        dictionary = embed.to_dict()
-        title = dictionary.get("title", "")
-        description = dictionary.get("description", "")
-        fields = dictionary.get("fields", [])
-        footer = dictionary.get("footer", {}).get("text", "")
-
-        if title:
-            lengths.append(len(title))
-        if description:
-            for line in description.split("\n"):
-                lengths.append(len(line))
-        for field in fields:
-            field_name = field.get("name", "")
-            field_value = field.get("value", "")
-            lengths.append(len(field_name))
-            lengths.append(len(field_value))
-        if footer:
-            lengths.append(len(footer))
-
-        if lengths:
-            max_length = min(max(lengths), 100)
-        else:
+        embed_dict = cast(dict[str, Any], embed.to_dict())
+        lengths = _embed_component_lengths(embed_dict)
+        if not lengths:
             return ""
+        max_length = min(max(lengths), 100)
+        return _render_embed_table(embed_dict, max_length)
 
-        message_content += "/" + "-" * (int(max_length) + 2) + "\\\n"
-        new_line = " "
-        if title:
-            message_content += f"| {title:{max_length}} |\n"
-            message_content += f"| {new_line:{max_length}} |\n"
-        if description:
-            for line in description.split("\n"):
-                substrings = []
-                index = 0
-                while index < len(line):
-                    substrings.append(line[index : index + 100])
-                    index += 100
-                for sub in substrings:
-                    message_content += f"| {sub:{max_length}} |\n"
-            message_content += f"| {new_line:{max_length}} |\n"
-        for field in fields:
-            field_name = field.get("name", "")
-            field_value = field.get("value", "")
-            message_content += f"| {field_name:{max_length}} |\n{field_value:{max_length}} |\n"
-        if footer:
-            message_content += f"| {footer:{max_length}} |\n"
-        message_content += "\\" + "-" * (int(max_length) + 2) + "/"
-
-        return message_content
+    async def _append_message_to_transcript(self, content: str, message: discord.Message) -> str:
+        try:
+            message_content = message.content
+            for embed in message.embeds:
+                message_content += "\n" + await self.format_embed_content(embed)
+            created_at = self.convert_to_est(message.created_at.timestamp())
+            block = f"[{created_at}]\n{message.author.name} : {message.author.id}"
+            if message_content:
+                block += f"\n\t{message_content}"
+            return content + block + "\n\n"
+        except MESSAGE_CONTENT_ERRORS as error:
+            log_tasks.warning(
+                "Failed logging message %s (%s): %s %s",
+                message.author,
+                message.author.id,
+                message.content,
+                error,
+            )
+            return content
 
     @TaskDecorator.task("Generate Transcript Content")
     async def generate_transcript_content(
         self,
         messages: list[discord.Message],
-        opened_string: str,
-        ticket_type: str,
-        ticket_number: str,
-        owner: discord.abc.User,
-        owner_id: int,
-        reason: str,
-        closed_by: discord.Member,
-        channel_id: int,
-        closed_at_string: str,
-        closed_by_id: int,
+        header: TranscriptHeader,
+        closure: TranscriptClosure,
     ) -> str:
-        content: str = (
-            f"Minecadia Tickets Bot: {ticket_type}\n"
-            f"- Opened by: {owner} ({owner_id})\n"
-            f"- Opened at: {opened_string}\n"
-            f"- Channel ID: {channel_id}\n"
-            f"- Ticket ID: {ticket_number}\n \n"
+        content = (
+            f"Minecadia Tickets Bot: {header.ticket_type}\n"
+            f"- Opened by: {header.owner} ({header.owner_id})\n"
+            f"- Opened at: {header.opened_string}\n"
+            f"- Channel ID: {header.channel_id}\n"
+            f"- Ticket ID: {header.ticket_number}\n \n"
             "──────────────────────────────────────────────────────\n \n"
         )
         for message in messages:
-            try:
-                message_content: str = message.content
-                for embed in message.embeds:
-                    embed_content: str = await self.format_embed_content(embed)
-                    message_content += "\n" + embed_content
-                created_at = self.convert_to_est(message.created_at.timestamp())
-                content += f"[{created_at}]\n{message.author.name} : {message.author.id}"
-                if message_content:
-                    content += f"\n\t{message_content}"
-                content += "\n\n"
-
-            except (DISCORD_API_ERRORS, ValueError, TypeError, AttributeError) as error:
-                log_tasks.warning(
-                    "Failed logging message %s (%s): %s %s",
-                    message.author,
-                    message.author.id,
-                    message.content,
-                    error,
-                )
+            content = await self._append_message_to_transcript(content, message)
 
         content += (
             f"──────────────────────────────────────────────────────\n\n"
-            f"- Closure Reason: {reason}\n"
-            f"- Closed By: {closed_by} ({closed_by_id})\n"
-            f"- Closed At: {closed_at_string}"
+            f"- Closure Reason: {closure.reason}\n"
+            f"- Closed By: {closure.closed_by} ({closure.closed_by_id})\n"
+            f"- Closed At: {closure.closed_at_string}"
         )
-
         return content
 
     @TaskDecorator.task("Get Ticketlog Embed")
-    async def get_ticket_log(
-        self,
-        reason: str,
-        opened_timestamp: int | str,
-        ticket_number: str,
-        owner_mention: str,
-        owner: discord.abc.User,
-        link: str,
-        ticket_type: str,
-        closed_at_timestamp: int,
-        closed_by: discord.Member,
-    ) -> discord.Embed:
+    async def get_ticket_log(self, summary: TicketLogSummary, timing: TicketLogTiming) -> discord.Embed:
         delta = "N/A"
-        if isinstance(opened_timestamp, int):
-            seconds = closed_at_timestamp - opened_timestamp
+        if isinstance(timing.opened_timestamp, int):
+            seconds = timing.closed_at_timestamp - timing.opened_timestamp
             delta = self.client.app.time_format.seconds_to_format(seconds)
 
         desc = (
-            f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n"
-            f" **Reason:** {reason}\n"
-            f" **Owner:** {owner_mention} / {owner.name}\n"
+            f"`🎫` **{summary.ticket_type} #{summary.ticket_number}** was closed by {summary.closed_by}\n"
+            f" **Reason:** {summary.reason}\n"
+            f" **Owner:** {summary.owner_mention} / {summary.owner.name}\n"
             f" **Ticket Duration:** {delta}\n"
-            f"[Ticket Transcript]({link})"
+            f"[Ticket Transcript]({summary.link})"
         )
         embed = discord.Embed(color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc)
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
-
         return embed
 
     @TaskDecorator.task("Send Ticketlog", False)
@@ -245,7 +268,7 @@ class Close(commands.Cog):
             dm_channels = await asyncio.gather(*tasks)
             send_tasks = [dm.send(embed=embed, file=discord.File("assets/Logo.png")) for dm in dm_channels if dm]
             await asyncio.gather(*send_tasks)
-        except (DISCORD_API_ERRORS, OSError, FileNotFoundError) as error:
+        except DM_BROADCAST_ERRORS as error:
             log_tasks.warning("Failed to send ticket log: %s", error)
 
     @TaskDecorator.task("Update Database")
@@ -377,30 +400,38 @@ class Close(commands.Cog):
         closed_by_id = closed_by.id
         content = await self.generate_transcript_content(
             messages,
-            opened_string,
-            ticket_type,
-            ticket_number,
-            owner,
-            owner_id,
-            reason,
-            closed_by,
-            channel_id,
-            closed_at_string,
-            closed_by_id,
+            TranscriptHeader(
+                opened_string=opened_string,
+                ticket_type=ticket_type,
+                ticket_number=ticket_number,
+                owner=owner,
+                owner_id=owner_id,
+                channel_id=channel_id,
+            ),
+            TranscriptClosure(
+                reason=reason,
+                closed_by=closed_by,
+                closed_at_string=closed_at_string,
+                closed_by_id=closed_by_id,
+            ),
         )
 
         link = await self.return_link(content)
 
         embed = await self.get_ticket_log(
-            reason,
-            opened_timestamp,
-            ticket_number,
-            owner_mention,
-            owner,
-            link,
-            ticket_type,
-            closed_at_timestamp,
-            closed_by,
+            TicketLogSummary(
+                reason=reason,
+                ticket_number=ticket_number,
+                ticket_type=ticket_type,
+                owner_mention=owner_mention,
+                owner=owner,
+                link=link,
+                closed_by=closed_by,
+            ),
+            TicketLogTiming(
+                opened_timestamp=opened_timestamp,
+                closed_at_timestamp=closed_at_timestamp,
+            ),
         )
         await self.send_ticket_log(guild, channel, embed, privated)
         await self.update_database(

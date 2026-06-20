@@ -16,10 +16,10 @@ from discord.ext import commands
 
 from core.bot_client import TicketsBot
 from core.database import DatabasePool
-from services.active_ticket_cache import active_ticket_cache
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild
 from core.loggers import log_tasks
+from services.active_ticket_cache import active_ticket_cache
 from ui.views.paginator import Paginator
 
 

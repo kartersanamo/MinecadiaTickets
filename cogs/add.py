@@ -38,7 +38,10 @@ class Add(commands.Cog):
                 channel.id,
             )
             await interaction.response.send_message(
-                content="`❌` Failed! You cannot add this player to the ticket as they are currently ticket blacklisted!",
+                content=(
+                    "`❌` Failed! You cannot add this player to the ticket "
+                    "as they are currently ticket blacklisted!"
+                ),
                 ephemeral=True,
             )
             return True

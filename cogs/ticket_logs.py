@@ -32,8 +32,8 @@ class TicketLogs(commands.Cog):
         state = TicketLogUIState(user)
         view = TicketLogsV2Layout(interaction, state)
         kwargs: Dict[str, Any] = {"content": None, "view": view}
-        if view._logo_files:
-            kwargs["attachments"] = view._logo_files
+        if view.logo_files:
+            kwargs["attachments"] = view.logo_files
         if view.content_length_safe > 4000:
             fb = discord.ui.LayoutView(timeout=600)
             fb.add_item(

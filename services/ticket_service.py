@@ -8,3 +8,6 @@ class TicketService:
 
     def execute(self, query: str) -> list:
         return self._repo.execute(query)
+
+    def setting(self, key: str, default=None):
+        return self.settings.get(key, default)

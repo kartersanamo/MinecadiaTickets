@@ -14,6 +14,10 @@ class StatisticsService:
         self._repo.insert_default_row(user.id)
         return 0
 
+    async def ensure_row(self, user: discord.Member) -> None:
+        if not self._repo.find_row(user.id):
+            self._repo.insert_default_row(user.id)
+
 
 _default_statistics = StatisticsService()
 is_found = _default_statistics.get_statistic

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 
 import discord
 from discord import app_commands
@@ -12,6 +13,9 @@ from discord.ext import commands
 from core.errors.interactions import SafeInteractions
 from core.errors.logging import ExceptionLogging
 from core.errors.messages import ErrorMessages
+
+AsyncioHandler = Callable[[asyncio.AbstractEventLoop, dict], None]
+_ASYNCIO_HANDLERS: dict[int, AsyncioHandler] = {}
 
 
 class DiscordErrorHandlers:
@@ -67,7 +71,7 @@ class DiscordErrorHandlers:
             else:
                 log_tasks.error("[%s] asyncio: %s", bot_name, msg)
 
-        bot._minecadia_asyncio_exception_handler = _asyncio_exception_handler  # type: ignore[attr-defined]
+        _ASYNCIO_HANDLERS[id(bot)] = _asyncio_exception_handler
         log_tasks.info("[%s] Discord error handlers installed", bot_name)
 
     @staticmethod
@@ -78,7 +82,7 @@ class DiscordErrorHandlers:
         bot_name: str,
     ) -> None:
         """Call from bot setup_hook (async context) to catch unhandled task exceptions."""
-        handler = getattr(bot, "_minecadia_asyncio_exception_handler", None)
+        handler = _ASYNCIO_HANDLERS.get(id(bot))
         if handler is None:
 
             def _fallback(_loop: asyncio.AbstractEventLoop, context: dict) -> None:

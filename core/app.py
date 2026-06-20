@@ -26,3 +26,6 @@ class BotApp:
     @classmethod
     def from_bot(cls, bot: TicketsBot) -> "BotApp":
         return cls(bot)
+
+    def refresh_settings(self) -> None:
+        self.settings = ConfigManager.all()

@@ -41,7 +41,9 @@ class ConfigManager:
 
     @classmethod
     def get_db_config(cls) -> dict:
-        return cls.get_instance()._resolve_db_config()
+        if os.getenv("DB_HOST"):
+            return cls._db_config_from_env()
+        return cls.get_instance().settings.get("DATABASE_CONFIG") or {}
 
     @classmethod
     def tickets(cls) -> dict:
@@ -83,11 +85,5 @@ class ConfigManager:
             "database": os.getenv("DB_NAME", "") or os.getenv("DB_DATABASE", ""),
             "autocommit": os.getenv("DB_AUTOCOMMIT", "true").lower() in ("1", "true", "yes"),
         }
-
-    def _resolve_db_config(self) -> dict:
-        if os.getenv("DB_HOST"):
-            return self._db_config_from_env()
-        return self.settings.get("DATABASE_CONFIG") or {}
-
 
 __all__ = ["ConfigManager"]

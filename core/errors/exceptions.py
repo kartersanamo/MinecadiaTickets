@@ -23,6 +23,21 @@ CONFIG_IO_ERRORS: Tuple[Type[BaseException], ...] = (
 
 UI_CALLBACK_ERRORS: Tuple[Type[BaseException], ...] = DISCORD_API_ERRORS + CONFIG_IO_ERRORS
 
+MESSAGE_CONTENT_ERRORS: Tuple[Type[BaseException], ...] = (
+    *DISCORD_API_ERRORS,
+    ValueError,
+    TypeError,
+    AttributeError,
+)
+
+CHANNEL_HISTORY_ERRORS: Tuple[Type[BaseException], ...] = (*DISCORD_API_ERRORS, OSError)
+
+DM_BROADCAST_ERRORS: Tuple[Type[BaseException], ...] = (
+    *DISCORD_API_ERRORS,
+    OSError,
+    FileNotFoundError,
+)
+
 
 class UserFacingError(Exception):
     """Raised when the user should see a specific message (not a stack trace)."""

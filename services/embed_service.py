@@ -4,6 +4,10 @@ from typing import Optional
 
 class EmbedService:
     @staticmethod
+    def has_local_logo(logo_path: Optional[str]) -> bool:
+        return bool(logo_path and os.path.isfile(logo_path))
+
+    @staticmethod
     def get_logo_url(logo_path: Optional[str]) -> Optional[str]:
         if not logo_path:
             return None

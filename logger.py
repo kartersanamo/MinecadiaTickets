@@ -55,6 +55,7 @@ class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
         )
         if not hasattr(self, "suffix"):
             self.suffix = "%Y-%m-%d"
+        self.baseFilename = os.path.abspath(filename)
 
     def doRollover(self) -> None:
         if self.stream is not None:
@@ -62,7 +63,7 @@ class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
         current_time = int(self.rolloverAt - self.interval)
         dt: datetime.datetime = datetime.datetime.fromtimestamp(current_time, tz=EST)
         dfn: str = dt.strftime(self.suffix)
-        self.filename: str = dfn
+        self.baseFilename = os.path.abspath(os.path.join("logs", dfn))
         if self.backupCount > 0:
             for s in self.getFilesToDelete():
                 os.remove(path=s)

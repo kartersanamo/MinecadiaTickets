@@ -8,6 +8,7 @@ import discord
 
 from services.ticket_log_service import TicketLogService
 from ui.views.ticket_log_u_i_state_view import TicketLogUIState
+from ui.views.ticket_logs_v2_refresh import build_ticket_logs_view
 
 
 class JumpTicketModal(discord.ui.Modal, title="Jump to ticket #"):
@@ -34,11 +35,8 @@ class JumpTicketModal(discord.ui.Modal, title="Jump to ticket #"):
             return
         self._state.detail_channel_id = int(row["channel_id"])
         self._state.page = 0
-        view = TicketLogsV2Layout(interaction, self._state)
+        view = build_ticket_logs_view(interaction, self._state)
         kwargs: Dict[str, Any] = {"content": None, "view": view}
-        if view._logo_files:
-            kwargs["attachments"] = view._logo_files
+        if view.logo_files:
+            kwargs["attachments"] = view.logo_files
         await interaction.response.edit_message(**kwargs)
-
-
-from ui.views.ticket_logs_v2_layout_view import TicketLogsV2Layout

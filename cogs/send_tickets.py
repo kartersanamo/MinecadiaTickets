@@ -43,11 +43,8 @@ class TicketsSend(commands.Cog):
     async def send_tickets_command(
         self, interaction: discord.Interaction, option: str, channel: discord.TextChannel
     ) -> None:
-        (
-            None
-            if interaction.response.is_done()
-            else await interaction.response.send_message(content="`🔃` Sending your message...", ephemeral=True)
-        )
+        if not interaction.response.is_done():
+            await interaction.response.send_message(content="`🔃` Sending your message...", ephemeral=True)
 
         embeds = {
             "Tickets": [

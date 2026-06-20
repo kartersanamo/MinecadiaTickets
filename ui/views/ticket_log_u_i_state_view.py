@@ -17,3 +17,11 @@ class TicketLogUIState:
         self.type_filter: Optional[str] = None
         self.page: int = 0
         self.detail_channel_id: Optional[int] = None
+
+    def show_list(self) -> None:
+        self.detail_channel_id = None
+        self.page = 0
+
+    def show_detail(self, channel_id: int) -> None:
+        self.detail_channel_id = channel_id
+        self.page = 0

@@ -12,7 +12,7 @@ from core.errors.exceptions import UserFacingError
 
 class ExceptionLogging:
     @staticmethod
-    def _interaction_context(interaction: Optional[discord.Interaction]) -> dict[str, Any]:
+    def interaction_context(interaction: Optional[discord.Interaction]) -> dict[str, Any]:
         if interaction is None:
             return {}
         ctx: dict[str, Any] = {
@@ -47,7 +47,7 @@ class ExceptionLogging:
         else:
             parts.append(str(exc))
 
-        ctx = cls._interaction_context(interaction)
+        ctx = cls.interaction_context(interaction)
         if extra:
             ctx.update(extra)
         if ctx:

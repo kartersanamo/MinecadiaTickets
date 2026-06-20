@@ -1,5 +1,9 @@
 class TimeFormatService:
     @staticmethod
+    def format_elapsed(start_timestamp: int, end_timestamp: int) -> str:
+        return TimeFormatService.seconds_to_format(max(0, end_timestamp - start_timestamp))
+
+    @staticmethod
     def seconds_to_format(seconds: int) -> str:
         days, seconds = divmod(seconds, 86400)
         hours, seconds = divmod(seconds, 3600)

@@ -18,6 +18,17 @@ F = TypeVar("F", bound=Callable)
 
 class SafeInteractionDecorator:
     @staticmethod
+    def safe_button(
+        logger: logging.Logger,
+        *,
+        bot_name: str | None = None,
+        component: str | None = None,
+    ) -> Callable[[F], F]:
+        return SafeInteractionDecorator.safe_interaction(
+            logger, bot_name=bot_name, component=component
+        )
+
+    @staticmethod
     def safe_interaction(
         logger: logging.Logger,
         *,

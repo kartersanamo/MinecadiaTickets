@@ -22,7 +22,7 @@ from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild
-from core.errors.exceptions import DISCORD_API_ERRORS
+from core.errors.exceptions import CHANNEL_HISTORY_ERRORS
 from core.loggers import log_tasks
 
 
@@ -50,7 +50,7 @@ class ActiveTickets(commands.Cog):
                     return
             self.cache[cache_key] = False
 
-        except (DISCORD_API_ERRORS, OSError) as error:
+        except CHANNEL_HISTORY_ERRORS as error:
             log_tasks.error("Checking user messages error %s", error)
             self.cache[cache_key] = False
 
@@ -91,37 +91,46 @@ class ActiveTickets(commands.Cog):
             blocks.append("\n".join(cur))
         return blocks
 
+    @staticmethod
+    def _active_tickets_title(interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> str:
+        title = (
+            "# Active Tickets\n"
+            f"Tickets where **{interaction.user.mention}** has sent at least one message."
+        )
+        if tickets:
+            suffix = "s" if len(tickets) != 1 else ""
+            title += f"\n\n**{len(tickets)}** open channel{suffix}."
+        else:
+            title += "\n\n*You are not active in any ticket channels right now.*"
+        return title
+
+    @staticmethod
+    def _logo_thumbnail(
+        logo_path: str | None, logo_url: str | None
+    ) -> Tuple[List[discord.File], Optional[str], bool]:
+        logo_files: List[discord.File] = []
+        if not logo_url:
+            return logo_files, None, False
+        if logo_url.startswith("attachment://") and logo_path and os.path.isfile(logo_path):
+            fname = os.path.basename(logo_path)
+            logo_files.append(discord.File(logo_path, filename=fname))
+            return logo_files, f"attachment://{fname}", True
+        if logo_url.startswith(("http://", "https://")):
+            return logo_files, logo_url, True
+        return logo_files, None, False
+
     def _build_active_tickets_layout(
         self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]
     ) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
         accent = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         logo_path = ConfigManager.get("LOGO")
         logo_url = self.client.app.embeds.get_logo_url(logo_path)
-        logo_files: List[discord.File] = []
+        logo_files, thumb_media, use_section = self._logo_thumbnail(logo_path, logo_url)
+        title_block = self._active_tickets_title(interaction, tickets)
+        thumb_desc = (ConfigManager.get("FOOTER") or "Logo")[:256]
 
         view = discord.ui.LayoutView(timeout=None)
         inner: list = []
-
-        title_block = (
-            f"# Active Tickets\n" f"Tickets where **{interaction.user.mention}** has sent at least one message."
-        )
-        if tickets:
-            title_block += f"\n\n**{len(tickets)}** open channel{'s' if len(tickets) != 1 else ''}."
-        else:
-            title_block += "\n\n*You are not active in any ticket channels right now.*"
-
-        thumb_desc = (ConfigManager.get("FOOTER") or "Logo")[:256]
-        use_section = False
-        thumb_media: Optional[str] = None
-        if logo_url:
-            if logo_url.startswith("attachment://") and logo_path and os.path.isfile(logo_path):
-                fname = os.path.basename(logo_path)
-                logo_files.append(discord.File(logo_path, filename=fname))
-                thumb_media = f"attachment://{fname}"
-                use_section = True
-            elif logo_url.startswith(("http://", "https://")):
-                thumb_media = logo_url
-                use_section = True
 
         if use_section and thumb_media:
             inner.append(
@@ -136,8 +145,8 @@ class ActiveTickets(commands.Cog):
         inner.append(discord.ui.Separator(visible=True, spacing=SeparatorSpacing.large))
 
         if tickets:
-            lines: List[str] = []
-            for mention, cat in tickets:  # type: ignore
+            lines = []
+            for mention, cat in tickets:
                 safe_cat = cat.replace("`", "'")
                 lines.append(f"- {mention} — `{safe_cat}`")
             for block in self._chunk_line_blocks(lines, 3500):
@@ -150,8 +159,8 @@ class ActiveTickets(commands.Cog):
         view.add_item(container)
 
         if view.content_length() > 4000:
-            view = discord.ui.LayoutView(timeout=None)
-            view.add_item(
+            fallback = discord.ui.LayoutView(timeout=None)
+            fallback.add_item(
                 discord.ui.Container(
                     discord.ui.TextDisplay(
                         "# Active Tickets\n"
@@ -161,7 +170,7 @@ class ActiveTickets(commands.Cog):
                     accent_color=accent,
                 )
             )
-            return view, []
+            return fallback, []
         return view, logo_files
 
     @TaskDecorator.task("Send Components V2 response")

@@ -9,6 +9,10 @@ from core.loggers import log_tasks
 
 class TaskDecorator:
     @staticmethod
+    def silent_task(action_name: str):
+        return TaskDecorator.task(action_name, False)
+
+    @staticmethod
     def task(action_name: str, log: bool | None = None):
         def decorator(func):
             @functools.wraps(func)

@@ -92,7 +92,10 @@ class TicketCreationService:
                 interaction.user,
                 interaction.user.id,
             )
-            return f"`❌` You are currently **blacklisted** from creating tickets for the following reason\n```{blacklist_reason}```"
+            return (
+                f"`❌` You are currently **blacklisted** from creating tickets "
+                f"for the following reason\n```{blacklist_reason}```"
+            )
         return None
 
     @TaskDecorator.task("Check Disabled", False)

@@ -6,6 +6,10 @@ from core.config import ConfigManager
 
 class TicketCheckService:
     @staticmethod
+    def is_ticket_category(category_id: int | None) -> bool:
+        return category_id is not None and category_id in ConfigManager.get("TICKET_CATEGORIES")
+
+    @staticmethod
     def ticket_only():
         async def predicate(interaction: discord.Interaction) -> bool:
             if (
