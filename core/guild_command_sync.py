@@ -1,4 +1,5 @@
 """Guild-scoped slash command sync for Minecadia bots."""
+
 from __future__ import annotations
 
 import logging
@@ -41,10 +42,7 @@ class GuildCommandSync:
             return await bot.tree.sync()
         except discord.HTTPException as exc:
             if exc.code == 50240:
-                warn(
-                    "Global command sync incomplete — Discord Activities Entry Point "
-                    "must stay registered (50240)."
-                )
+                warn("Global command sync incomplete — Discord Activities Entry Point " "must stay registered (50240).")
                 return []
             raise
 

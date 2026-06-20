@@ -18,12 +18,13 @@ import requests
 from discord import app_commands
 from discord.ext import commands
 
-from core.analytics import logger as analytics
+from core.analytics.logger import AnalyticsLogger as analytics
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_member, require_text_channel
+from core.errors.exceptions import DISCORD_API_ERRORS
 from core.loggers import log_commands, log_tasks
 from services.statistics_service import is_found
 from services.ticket_check_service import is_ticket
@@ -35,13 +36,13 @@ class Close(commands.Cog):
 
     def convert_to_est(self, timestamp: int | float | str) -> str:
         try:
-            est_time = datetime.datetime.fromtimestamp(
-                int(float(timestamp)), tz=pytz.utc
-            ).astimezone(pytz.timezone("US/Eastern"))
+            est_time = datetime.datetime.fromtimestamp(int(float(timestamp)), tz=pytz.utc).astimezone(
+                pytz.timezone("US/Eastern")
+            )
             return est_time.strftime("%a, %b %d, %Y, %I:%M:%S %p") + " EST"
 
-        except Exception as error:
-            log_commands.warning(f"Failed to convert the timestamp to EST {error}")
+        except (ValueError, TypeError, OSError) as error:
+            log_commands.warning("Failed to convert the timestamp to EST %s", error)
             return "N/A"
 
     @TaskDecorator.task("Get Transcript Link")
@@ -157,9 +158,13 @@ class Close(commands.Cog):
                     content += f"\n\t{message_content}"
                 content += "\n\n"
 
-            except Exception as error:
+            except (DISCORD_API_ERRORS, ValueError, TypeError, AttributeError) as error:
                 log_tasks.warning(
-                    f"Failed logging message {message.author} ({message.author.id}): {message.content} {error}"
+                    "Failed logging message %s (%s): %s %s",
+                    message.author,
+                    message.author.id,
+                    message.content,
+                    error,
                 )
 
         content += f"──────────────────────────────────────────────────────\n\n- Closure Reason: {reason}\n- Closed By: {closed_by} ({closed_by_id})\n- Closed At: {closed_at_string}"
@@ -185,9 +190,7 @@ class Close(commands.Cog):
             delta = self.client.app.time_format.seconds_to_format(seconds)
 
         desc = f"`🎫` **{ticket_type} #{ticket_number}** was closed by {closed_by}\n **Reason:** {reason}\n **Owner:** {owner_mention} / {owner.name}\n **Ticket Duration:** {delta}\n[Ticket Transcript]({link})"
-        embed = discord.Embed(
-            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc
-        )
+        embed = discord.Embed(color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc)
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
         embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
 
@@ -223,14 +226,10 @@ class Close(commands.Cog):
 
         try:
             dm_channels = await asyncio.gather(*tasks)
-            send_tasks = [
-                dm.send(embed=embed, file=discord.File("assets/Logo.png"))
-                for dm in dm_channels
-                if dm
-            ]
+            send_tasks = [dm.send(embed=embed, file=discord.File("assets/Logo.png")) for dm in dm_channels if dm]
             await asyncio.gather(*send_tasks)
-        except Exception as error:
-            log_tasks.warning(f"Failed to send ticket log: {error}")
+        except (DISCORD_API_ERRORS, OSError, FileNotFoundError) as error:
+            log_tasks.warning("Failed to send ticket log: %s", error)
 
     @TaskDecorator.task("Update Database")
     async def update_database(
@@ -402,7 +401,13 @@ class Close(commands.Cog):
 
         ticket_count = await self.get_ticket_count()
         log_commands.info(
-            f"Closed #{name} ({channel_id}) in {str(round((time.perf_counter() - start), 2))}s by {closed_by} ({closed_by_id}) {ticket_count}"
+            "Closed #%s (%s) in %ss by %s (%s) %s",
+            name,
+            channel_id,
+            str(round((time.perf_counter() - start), 2)),
+            closed_by,
+            closed_by_id,
+            ticket_count,
         )
 
 

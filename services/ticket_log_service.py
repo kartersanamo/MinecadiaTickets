@@ -33,9 +33,7 @@ class TicketLogService:
         if guild is None:
             return False, False
         member = (
-            interaction.user
-            if isinstance(interaction.user, discord.Member)
-            else guild.get_member(interaction.user.id)
+            interaction.user if isinstance(interaction.user, discord.Member) else guild.get_member(interaction.user.id)
         )
         if member is None:
             return False, False

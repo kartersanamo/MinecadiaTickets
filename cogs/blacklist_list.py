@@ -7,9 +7,11 @@ It is used to display the list of users who are blacklisted from opening tickets
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
 from core.bot_client import TicketsBot
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
@@ -27,16 +29,16 @@ class BlacklistList(commands.Cog):
         paginate.title = "Blacklisted Users"
         paginate.data = data
         paginate.sep = 5
-        await paginate.send(interaction) 
+        await paginate.send(interaction)
 
     @TaskDecorator.task("Get Blacklist Data")
     async def get_blacklist_data(self, interaction: discord.Interaction, rows: list) -> list:
         blacklist_data: list = []
         guild = require_guild(interaction.guild)
         for row in rows:
-            user_id = int(row['user_id'])
-            staff_id = int(row['staff_id'])
-            reason = row['reason']
+            user_id = int(row["user_id"])
+            staff_id = int(row["staff_id"])
+            reason = row["reason"]
             user = guild.get_member(user_id)
             staff = guild.get_member(staff_id)
             if user:
@@ -48,11 +50,13 @@ class BlacklistList(commands.Cog):
             else:
                 staff_mention: str = f"`{staff_id}`"
             user_info: str = f"{user_name} ({user_id})"
-            reason_info: str = f"`Staff` {staff_mention}\n`Reason` {reason}\n`Unblacklisted` <t:{int(row['unblacklist_at'])}:R>"
+            reason_info: str = (
+                f"`Staff` {staff_mention}\n`Reason` {reason}\n`Unblacklisted` <t:{int(row['unblacklist_at'])}:R>"
+            )
             blacklist_data.append(f"**{user_info}**\n{reason_info}\n")
         if not blacklist_data:
             blacklist_data.append("No data found.")
-        
+
         return blacklist_data
 
     @app_commands.guild_only()
@@ -65,7 +69,6 @@ class BlacklistList(commands.Cog):
         rows: list = DatabasePool.execute("SELECT user_id, staff_id, unblacklist_at, reason FROM blacklists")
         blacklist_data: list = await self.get_blacklist_data(interaction, rows)
         await self.send_paginator(interaction, blacklist_data)
-
 
 
 async def setup(client: TicketsBot) -> None:

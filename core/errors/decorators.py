@@ -1,4 +1,5 @@
 """Decorators for safe UI callbacks and tasks."""
+
 from __future__ import annotations
 
 import functools
@@ -7,6 +8,7 @@ from typing import Callable, TypeVar
 
 import discord
 
+from core.errors.exceptions import UI_CALLBACK_ERRORS, UserFacingError
 from core.errors.interactions import SafeInteractions
 from core.errors.logging import ExceptionLogging
 from core.errors.messages import ErrorMessages
@@ -30,7 +32,7 @@ class SafeInteractionDecorator:
             async def wrapper(self, interaction: discord.Interaction, *args, **kwargs):
                 try:
                     return await func(self, interaction, *args, **kwargs)
-                except Exception as exc:
+                except (UserFacingError, *UI_CALLBACK_ERRORS) as exc:
                     msg = user_message or ErrorMessages.external_service_message(exc)
                     ExceptionLogging.log_exception(
                         logger,

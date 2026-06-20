@@ -1,5 +1,4 @@
 from core.bot_client import TicketsBot
-
 from core.config import ConfigManager
 from core.database import DatabasePool
 from repositories.statistics_repository import StatisticsRepository

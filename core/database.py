@@ -5,6 +5,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
+from mysql.connector import Error as MySQLConnectorError
 from mysql.connector import pooling
 
 from core.config import ConfigManager
@@ -60,7 +61,7 @@ class DatabasePool:
             if cursor.description:
                 rows = cursor.fetchall()
             cursor.close()
-        except Exception as error:
+        except (MySQLConnectorError, OSError, ValueError, TypeError) as error:
             from core.errors.db import DatabaseErrors
 
             DatabaseErrors.log_db_failure(log_tasks, error, query_hint=query)
@@ -79,4 +80,3 @@ class DatabasePool:
         """Run a blocking query off the Discord event loop."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(_DB_EXECUTOR, cls.execute, query, params)
-

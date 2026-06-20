@@ -42,7 +42,6 @@ class ConfigManager:
     def get_db_config(cls) -> dict:
         return cls.get_instance()._resolve_db_config()
 
-
     @classmethod
     def tickets(cls) -> dict:
         if cls._tickets is None:
@@ -51,7 +50,7 @@ class ConfigManager:
 
     @classmethod
     def _read_tickets_file(cls) -> dict:
-        with open("assets/tickets.json", "r") as handle:
+        with open("assets/tickets.json", encoding="utf-8") as handle:
             data = json.load(handle)
         data.pop("TOGGLE_STATUS", None)
         return data
@@ -65,7 +64,7 @@ class ConfigManager:
         return cls._tickets
 
     def __init__(self):
-        with open("assets/config.json", "r") as file:
+        with open("assets/config.json", encoding="utf-8") as file:
             data = json.load(file)
         if os.getenv("DISCORD_TOKEN"):
             data["TOKEN"] = os.getenv("DISCORD_TOKEN")
@@ -74,6 +73,7 @@ class ConfigManager:
         if os.getenv("DB_HOST"):
             data["DATABASE_CONFIG"] = self._db_config_from_env()
         self.settings = data
+
     @staticmethod
     def _db_config_from_env() -> dict:
         return {

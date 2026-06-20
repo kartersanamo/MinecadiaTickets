@@ -1,4 +1,5 @@
 """Map exceptions and Discord errors to safe user-visible strings."""
+
 from __future__ import annotations
 
 import asyncio

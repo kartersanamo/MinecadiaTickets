@@ -6,6 +6,7 @@ import discord
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
+from core.errors.exceptions import UI_CALLBACK_ERRORS
 from core.loggers import log_tasks
 from services.embed_service import EmbedService
 
@@ -37,11 +38,7 @@ class Questions(discord.ui.Modal):
             )
             self._modal_field_headings.append(ign_label)
             for question in self.ticket_info["Questions"]:
-                style = (
-                    discord.TextStyle.short
-                    if question["Length"] == "Short"
-                    else discord.TextStyle.long
-                )
+                style = discord.TextStyle.short if question["Length"] == "Short" else discord.TextStyle.long
                 q_label = question["Label"]
                 input_field = discord.ui.TextInput(
                     label=q_label,
@@ -52,8 +49,8 @@ class Questions(discord.ui.Modal):
                 self.add_item(input_field)
                 self._modal_field_headings.append(q_label)
 
-        except Exception as e:
-            log_tasks.error(f"Failed to add items to the Questions modal {e}")
+        except (KeyError, TypeError, ValueError) as e:
+            log_tasks.error("Failed to add items to the Questions modal %s", e)
 
     @TaskDecorator.task("Get Previous Ticket", False)
     async def get_previous_ticket(self, owner_id: int) -> discord.Embed | None:
@@ -104,11 +101,7 @@ class Questions(discord.ui.Modal):
             ):
                 return
 
-            roles = [
-                role.mention
-                for ping in self.ticket_info["Pings"]
-                if (role := guild.get_role(ping)) is not None
-            ]
+            roles = [role.mention for ping in self.ticket_info["Pings"] if (role := guild.get_role(ping)) is not None]
             tags = await channel.send(" ".join(roles))
             embed = message.embeds[0]
             if embed.description is None:
@@ -132,9 +125,7 @@ class Questions(discord.ui.Modal):
             logo_url = EmbedService.get_logo_url(ConfigManager.get("LOGO"))
             embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
 
-            previous_ticket: discord.Embed | None = await self.get_previous_ticket(
-                owner_id=interaction.user.id
-            )
+            previous_ticket: discord.Embed | None = await self.get_previous_ticket(owner_id=interaction.user.id)
             if previous_ticket:
                 await message.edit(embeds=[embed, previous_ticket], view=None)
             else:
@@ -145,12 +136,14 @@ class Questions(discord.ui.Modal):
             await channel.set_permissions(user, overwrite=perms)
             await tags.delete()
             log_tasks.info(
-                f"{interaction.user} ({interaction.user.id}) updated the embed with question answers in #{channel} ({channel.id})"
+                "%s (%s) updated the embed with question answers in #%s (%s)",
+                interaction.user,
+                interaction.user.id,
+                channel,
+                channel.id,
             )
 
-            rows = DatabasePool.execute(
-                "SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (channel.id,)
-            )
+            rows = DatabasePool.execute("SELECT number FROM tickets WHERE channel_id = %s LIMIT 1", (channel.id,))
             if rows:
                 from services.ticket_creation_service import TicketCreationService as TicketSystem
 
@@ -163,7 +156,10 @@ class Questions(discord.ui.Modal):
                     )
                 )
 
-        except Exception as e:
+        except UI_CALLBACK_ERRORS as e:
             log_tasks.error(
-                f"{interaction.user} ({interaction.user.id}) failed to add question answers into embed {e}"
+                "%s (%s) failed to add question answers into embed %s",
+                interaction.user,
+                interaction.user.id,
+                e,
             )

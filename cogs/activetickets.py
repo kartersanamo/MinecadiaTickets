@@ -22,6 +22,7 @@ from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild
+from core.errors.exceptions import DISCORD_API_ERRORS
 from core.loggers import log_tasks
 
 
@@ -34,29 +35,23 @@ class ActiveTickets(commands.Cog):
         )
 
     @TaskDecorator.task("Check User Messages")
-    async def check_user_messages(
-        self, user_id: int, channel: discord.TextChannel, tickets: list
-    ) -> None:
+    async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
             if self.cache[cache_key]:
-                tickets.append(
-                    (channel.mention, channel.category.name if channel.category else "Unknown")
-                )
+                tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
             return
 
         try:
             async for message in channel.history(limit=None):
                 if message.author.id == user_id:
-                    tickets.append(
-                        (channel.mention, channel.category.name if channel.category else "Unknown")
-                    )
+                    tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
                     self.cache[cache_key] = True
                     return
             self.cache[cache_key] = False
 
-        except Exception as error:
-            log_tasks.error(f"Checking user messages error {error}")
+        except (DISCORD_API_ERRORS, OSError) as error:
+            log_tasks.error("Checking user messages error %s", error)
             self.cache[cache_key] = False
 
     @TaskDecorator.task("Get Tickets", True)
@@ -108,8 +103,7 @@ class ActiveTickets(commands.Cog):
         inner: list = []
 
         title_block = (
-            f"# Active Tickets\n"
-            f"Tickets where **{interaction.user.mention}** has sent at least one message."
+            f"# Active Tickets\n" f"Tickets where **{interaction.user.mention}** has sent at least one message."
         )
         if tickets:
             title_block += f"\n\n**{len(tickets)}** open channel{'s' if len(tickets) != 1 else ''}."
@@ -181,9 +175,7 @@ class ActiveTickets(commands.Cog):
         await interaction.edit_original_response(**edit_kw)
 
     @app_commands.guild_only()
-    @app_commands.command(
-        name="active-tickets", description="Returns which tickets you are actively speaking in"
-    )
+    @app_commands.command(name="active-tickets", description="Returns which tickets you are actively speaking in")
     async def activetickets(self, interaction: discord.Interaction) -> None:
         await self.activetickets_command(interaction)
 

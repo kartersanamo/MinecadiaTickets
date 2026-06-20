@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import discord
 
-from services.ticket_log_service import TicketLogService
 from ui.views.ticket_log_u_i_state_view import TicketLogUIState
 from ui.views.ticket_logs_v2_support import TicketLogsV2Support
 

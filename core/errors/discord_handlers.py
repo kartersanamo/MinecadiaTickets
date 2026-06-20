@@ -1,4 +1,5 @@
 """Global Discord and asyncio error handlers."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,9 +26,7 @@ class DiscordErrorHandlers:
         """Register tree, prefix command, and asyncio task error handlers on the bot."""
 
         @bot.tree.error
-        async def on_app_command_error(
-            interaction: discord.Interaction, error: app_commands.AppCommandError
-        ) -> None:
+        async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError) -> None:
             message = ErrorMessages.user_message_for(error)
             ExceptionLogging.log_exception(
                 log_commands,
@@ -66,10 +65,10 @@ class DiscordErrorHandlers:
             if exc is not None:
                 ExceptionLogging.log_exception(log_tasks, exc, bot_name=bot_name, component="asyncio_task")
             else:
-                log_tasks.error(f"[{bot_name}] asyncio: {msg}")
+                log_tasks.error("[%s] asyncio: %s", bot_name, msg)
 
         bot._minecadia_asyncio_exception_handler = _asyncio_exception_handler  # type: ignore[attr-defined]
-        log_tasks.info(f"[{bot_name}] Discord error handlers installed")
+        log_tasks.info("[%s] Discord error handlers installed", bot_name)
 
     @staticmethod
     def install_asyncio_exception_handler(
@@ -87,7 +86,7 @@ class DiscordErrorHandlers:
                 if exc is not None:
                     ExceptionLogging.log_exception(log_tasks, exc, bot_name=bot_name, component="asyncio_task")
                 else:
-                    log_tasks.error(f"[{bot_name}] asyncio: {context.get('message', 'unknown')}")
+                    log_tasks.error("[%s] asyncio: %s", bot_name, context.get("message", "unknown"))
 
             handler = _fallback
 

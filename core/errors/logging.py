@@ -1,4 +1,5 @@
 """Structured exception logging for all bots."""
+
 from __future__ import annotations
 
 import logging

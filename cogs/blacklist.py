@@ -7,30 +7,32 @@ It is used to blacklist a user from opening tickets and unblacklist them after a
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands, tasks
-from discord import app_commands
-from discord import Webhook
+
+import datetime
+import time
 from typing import Literal, Optional
 
-from core.bot_client import TicketsBot
-import datetime
 import aiohttp
 import discord
-import time
+from discord import Webhook, app_commands
+from discord.ext import commands, tasks
+
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.loggers import log_commands, log_tasks
 
+
 class Blacklist(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
         self.client: TicketsBot = client
         self.check_blacklists.start()
-  
+
     async def cog_unload(self) -> None:
         self.check_blacklists.stop()
 
-    @tasks.loop(minutes = 10)
+    @tasks.loop(minutes=10)
     async def check_blacklists(self) -> None:
         current_time: int = int(time.time())
         rows: list = DatabasePool.execute(
@@ -38,10 +40,10 @@ class Blacklist(commands.Cog):
             (current_time,),
         )
         if rows:
-            user_ids: list = [str(row['user_id']) for row in rows]
-            log_tasks.info(f"Removing ticket blacklists {user_ids}")
+            user_ids: list = [str(row["user_id"]) for row in rows]
+            log_tasks.info("Removing ticket blacklists %s", user_ids)
             await self.remove_blacklists(user_ids)
-        
+
     @TaskDecorator.task("Remove Blacklists", False)
     async def remove_blacklists(self, user_ids: list[str]) -> None:
         if not user_ids:
@@ -61,51 +63,68 @@ class Blacklist(commands.Cog):
         if existing_row:
             await self.remove_blacklists([str(user.id)])
             await self.send_embed(interaction, user, "unblacklisted")
-            log_commands.info(f"{user} ({user.id}) has been unblacklisted from creating tickets by a staff member")
+            log_commands.info("%s (%s) has been unblacklisted from creating tickets by a staff member", user, user.id)
             return True
         return False
 
     @TaskDecorator.task("Blacklist User", False)
-    async def blacklist_user(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
+    async def blacklist_user(
+        self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None
+    ) -> None:
         unix = await self.get_unix(length)
         DatabasePool.execute(
             "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) VALUES (%s, %s, %s, %s, %s)",
             (user.id, reason or "N/A", interaction.user.id, unix, int(__import__("time").time())),
         )
-        log_commands.info(f"Ticket blacklisted {user} ({user.id}) for {length}")
+        log_commands.info("Ticket blacklisted %s (%s) for %s", user, user.id, length)
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member, blacklisted: str) -> None:
         embed = discord.Embed(
-            description = f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
-            color = discord.Color.from_str(ConfigManager.get('EMBED_COLOR')))
+            description=f"{interaction.user.mention} has **{blacklisted}** {user.mention} from opening tickets",
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+        )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
-        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
-        await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
+        await interaction.response.send_message(embed=embed, file=discord.File("assets/Logo.png"))
 
     @TaskDecorator.task("Send Webhook", False)
-    async def send_webhook(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
+    async def send_webhook(
+        self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None
+    ) -> None:
         unix: int = await self.get_unix(length)
         embed = discord.Embed(
-            title = "Ticket Blacklist", 
-            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
-            description = f"`IGN` {user.display_name}\n`Discord` {user}\n`Reason` {reason or 'N/A'}\n`Expires` <t:{unix}:R>", 
-            timestamp = datetime.datetime.now(datetime.timezone.utc)
+            title="Ticket Blacklist",
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+            description=f"`IGN` {user.display_name}\n`Discord` {user}\n`Reason` {reason or 'N/A'}\n`Expires` <t:{unix}:R>",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
         )
-        embed.set_author(name = interaction.user.display_name, icon_url = interaction.user.avatar)
+        embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.avatar)
 
         async with aiohttp.ClientSession() as session:
-            webhook = Webhook.from_url(ConfigManager.get("TICKET_BLACKLIST_WEBHOOK"), session = session)
-            await webhook.send(embed = embed, username = "Ticket Blacklists")
+            webhook = Webhook.from_url(ConfigManager.get("TICKET_BLACKLIST_WEBHOOK"), session=session)
+            await webhook.send(embed=embed, username="Ticket Blacklists")
 
     @app_commands.guild_only()
-    @app_commands.command(name = "blacklist", description = "Blacklists a member from opening tickets")
-    @app_commands.describe(user = "The user to blacklist from opening tickets", length = "When this user should be unblacklisted from tickets", reason = "The reason for blacklisting the user")
-    async def blacklist(self, interaction: discord.Interaction, user: discord.Member, length: Literal["1d", "2d", "3d", "4d", "5d", "6d", "7d", "10d", "14d", "28d", "30d"], reason: Optional[str] = None) -> None:
+    @app_commands.command(name="blacklist", description="Blacklists a member from opening tickets")
+    @app_commands.describe(
+        user="The user to blacklist from opening tickets",
+        length="When this user should be unblacklisted from tickets",
+        reason="The reason for blacklisting the user",
+    )
+    async def blacklist(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member,
+        length: Literal["1d", "2d", "3d", "4d", "5d", "6d", "7d", "10d", "14d", "28d", "30d"],
+        reason: Optional[str] = None,
+    ) -> None:
         await self.blacklist_command(interaction, user, length, reason)
-    
+
     @TaskDecorator.task("Blacklist Command", True)
-    async def blacklist_command(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
+    async def blacklist_command(
+        self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None
+    ) -> None:
         blacklisted: bool = await self.check_blacklisted(interaction, user)
         if not blacklisted:
             await self.blacklist_user(interaction, user, length, reason)
@@ -113,6 +132,5 @@ class Blacklist(commands.Cog):
             await self.send_webhook(interaction, user, length, reason)
 
 
-
 async def setup(client: TicketsBot) -> None:
-  await client.add_cog(Blacklist(client))
+    await client.add_cog(Blacklist(client))

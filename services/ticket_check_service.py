@@ -1,5 +1,5 @@
-from discord import app_commands
 import discord
+from discord import app_commands
 
 from core.config import ConfigManager
 
@@ -9,12 +9,19 @@ class TicketCheckService:
     def ticket_only():
         async def predicate(interaction: discord.Interaction) -> bool:
             if (
-                not interaction.channel.category if interaction.channel is not None and isinstance(interaction.channel, discord.TextChannel) and interaction.channel.category is not None else None
-                or interaction.channel.category.id if interaction.channel is not None and isinstance(interaction.channel, discord.TextChannel) and interaction.channel.category is not None else None not in ConfigManager.get("TICKET_CATEGORIES")
-            ):
-                raise app_commands.CheckFailure(
-                    "`❌` Failed! This command can only be ran inside of a ticket."
+                not interaction.channel.category
+                if interaction.channel is not None
+                and isinstance(interaction.channel, discord.TextChannel)
+                and interaction.channel.category is not None
+                else (
+                    None or interaction.channel.category.id
+                    if interaction.channel is not None
+                    and isinstance(interaction.channel, discord.TextChannel)
+                    and interaction.channel.category is not None
+                    else None not in ConfigManager.get("TICKET_CATEGORIES")
                 )
+            ):
+                raise app_commands.CheckFailure("`❌` Failed! This command can only be ran inside of a ticket.")
             return True
 
         return app_commands.check(predicate)

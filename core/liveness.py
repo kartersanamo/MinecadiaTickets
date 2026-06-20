@@ -5,6 +5,7 @@ appears offline. In-process asyncio tasks cannot recover from that. A background
 thread periodically pings the event loop via call_soon_threadsafe; if the loop
 does not respond, the process is killed so run.sh can restart it.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +17,8 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
+
+from core.errors.exceptions import DISCORD_API_ERRORS
 
 LOOP_PING_INTERVAL = 45
 LOOP_PING_TIMEOUT = 20
@@ -159,7 +162,7 @@ async def _verify_gateway(bot: commands.Bot, log: logging.Logger, bot_name: str)
     try:
         await _probe_discord(bot)
         _gateway_failures = 0
-    except Exception as exc:
+    except (RuntimeError, asyncio.TimeoutError, *DISCORD_API_ERRORS, OSError) as exc:
         _gateway_failures += 1
         log.warning(
             "[%s] Discord health check failed (%s/%s): %s",

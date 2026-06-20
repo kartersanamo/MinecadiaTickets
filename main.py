@@ -32,9 +32,7 @@ from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
 from ui.views.tickets_view2_view import TicketsView2
 
-_bots_env: Path = (
-    Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
-)
+_bots_env: Path = Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
 if _bots_env.exists():
     load_dotenv(dotenv_path=_bots_env)
 
@@ -49,9 +47,7 @@ COG_FILES: list[str] = [
 class Client(TicketsBot):
     def __init__(self) -> None:
         super().__init__(command_prefix=".", intents=discord.Intents().all())
-        ErrorSetup.wire_bot(
-            bot=self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks
-        )
+        ErrorSetup.wire_bot(bot=self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks)
         self.app: BotApp  # initialized in setup_hook
         log_tasks.info(msg="Initialized the bot client")
 
@@ -128,22 +124,15 @@ class Client(TicketsBot):
     @TaskDecorator.task(action_name="Tickets Reload Command", log=True)
     async def tickets_reload_command(self, interaction: discord.Interaction, cog: str) -> None:
         if cog not in COG_FILES:
-            await interaction.response.send_message(
-                content=f"Invalid cog name **{cog}.py**", ephemeral=True
-            )
+            await interaction.response.send_message(content=f"Invalid cog name **{cog}.py**", ephemeral=True)
             log_commands.warning(
-                msg=f"User {interaction.user} ({interaction.user.id}) "
-                f"attempted to reload invalid cog {cog}.py"
+                msg=f"User {interaction.user} ({interaction.user.id}) " f"attempted to reload invalid cog {cog}.py"
             )
             return
         try:
             await self.reload_extension(name=f"cogs.{cog.lower()}")
-            log_commands.info(
-                msg=f"User {interaction.user} ({interaction.user.id}) " f"reloaded cog {cog}.py"
-            )
-            await interaction.response.send_message(
-                content=f"Successfully reloaded **{cog}.py**", ephemeral=True
-            )
+            log_commands.info(msg=f"User {interaction.user} ({interaction.user.id}) " f"reloaded cog {cog}.py")
+            await interaction.response.send_message(content=f"Successfully reloaded **{cog}.py**", ephemeral=True)
         except (
             commands.ExtensionNotLoaded,
             commands.ExtensionNotFound,
@@ -151,8 +140,7 @@ class Client(TicketsBot):
             commands.ExtensionFailed,
         ) as exc:
             log_commands.error(
-                msg=f"{interaction.user} ({interaction.user.id})"
-                f"failed to reload extension {cog}: {exc}"
+                msg=f"{interaction.user} ({interaction.user.id})" f"failed to reload extension {cog}: {exc}"
             )
             await interaction.response.send_message(
                 content=f"Failed to reload **{cog}.py**" "due to an exception", ephemeral=True
@@ -164,11 +152,7 @@ class Client(TicketsBot):
         _: discord.Interaction,
         current: str,
     ) -> list[app_commands.Choice[str]]:
-        return [
-            app_commands.Choice(name=cog, value=cog)
-            for cog in COG_FILES
-            if current.lower() in cog.lower()
-        ]
+        return [app_commands.Choice(name=cog, value=cog) for cog in COG_FILES if current.lower() in cog.lower()]
 
     @TaskDecorator.task(action_name="Setup Hook")
     async def setup_hook(self) -> None:

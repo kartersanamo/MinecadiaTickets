@@ -7,9 +7,11 @@ It is used to remove a user from a ticket channel.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
@@ -17,17 +19,14 @@ from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 
+
 class Remove(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
         self.client: TicketsBot = client
 
     @staticmethod
     def _hierarchy_role_ids() -> set[int]:
-        return {
-            role_id
-            for roles in ConfigManager.get("ROLE_HIERARCHY").values()
-            for role_id in roles
-        }
+        return {role_id for roles in ConfigManager.get("ROLE_HIERARCHY").values() for role_id in roles}
 
     @classmethod
     def _get_comparison_role_id(cls, member: discord.Member) -> int | None:
@@ -42,7 +41,7 @@ class Remove(commands.Cog):
 
     @TaskDecorator.task("Get Role Level", False)
     async def get_role_level(self, role_id: int) -> int | None:
-        for level, roles in enumerate(ConfigManager.get('ROLE_HIERARCHY').values()):
+        for level, roles in enumerate(ConfigManager.get("ROLE_HIERARCHY").values()):
             if role_id in roles:
                 return level
         return None
@@ -59,25 +58,25 @@ class Remove(commands.Cog):
     async def remove_permissions(self, channel: discord.TextChannel, user: discord.Member) -> None:
         perms = channel.overwrites_for(user)
         perms.view_channel = False
-        await channel.set_permissions(user, overwrite = perms)
+        await channel.set_permissions(user, overwrite=perms)
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
         channel = require_text_channel(interaction.channel)
         embed = discord.Embed(
-            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
-            description = f"{interaction.user.mention} has removed {user.mention} from the ticket {channel.mention}"
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+            description=f"{interaction.user.mention} has removed {user.mention} from the ticket {channel.mention}",
         )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
-        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
-        await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
+        await interaction.response.send_message(embed=embed, file=discord.File("assets/Logo.png"))
 
     @TaskDecorator.task("Check Higher Rank", False)
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         if not isinstance(interaction.user, discord.Member):
             return False
         guild = require_guild(interaction.guild)
-        staff_team_role = guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
+        staff_team_role = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team_role is None or staff_team_role not in user.roles:
             return False
         role_id_1 = self._get_comparison_role_id(user)
@@ -85,15 +84,23 @@ class Remove(commands.Cog):
         if role_id_1 is None or role_id_2 is None:
             return False
         if await self.is_higher_rank(role_id_1, role_id_2):
-            log_commands.warning(f"{interaction.user} ({interaction.user.id}) tried to remove a staff member higher than them {user} ({user.id})")
-            await interaction.response.send_message(content = "You cannot remove a staff member who is higher than you!", ephemeral = True)
+            log_commands.warning(
+                "%s (%s) tried to remove a staff member higher than them %s (%s)",
+                interaction.user,
+                interaction.user.id,
+                user,
+                user.id,
+            )
+            await interaction.response.send_message(
+                content="You cannot remove a staff member who is higher than you!", ephemeral=True
+            )
             return True
         return False
 
     @is_ticket()
     @app_commands.guild_only()
-    @app_commands.command(name = "remove", description = "Removes a user from the ticket")
-    @app_commands.describe(user = "The user to remove from the ticket")
+    @app_commands.command(name="remove", description="Removes a user from the ticket")
+    @app_commands.describe(user="The user to remove from the ticket")
     async def remove(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await self.remove_command(interaction, user)
 
@@ -104,7 +111,6 @@ class Remove(commands.Cog):
             channel = require_text_channel(interaction.channel)
             await self.remove_permissions(channel, user)
             await self.send_embed(interaction, user)
-
 
 
 async def setup(client: TicketsBot) -> None:

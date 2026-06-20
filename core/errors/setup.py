@@ -1,4 +1,5 @@
 """One-call wiring for bot main modules."""
+
 from __future__ import annotations
 
 import logging

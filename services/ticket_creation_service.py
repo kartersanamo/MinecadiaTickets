@@ -1,14 +1,16 @@
-import aiohttp
-import discord
+import asyncio
 import json
 import os
 import time
 
-from services.embed_service import EmbedService
+import aiohttp
+import discord
+
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.loggers import log_tasks
+from services.embed_service import EmbedService
 
 LOGO = "assets/Logo.png"
 
@@ -41,10 +43,7 @@ class TicketCreationService:
         owner_id: int,
     ) -> None:
         base_url = os.getenv("DASHBOARD_URL", "https://bots.kartersanamo.com").rstrip("/")
-        endpoint = (
-            os.getenv("DASHBOARD_TICKET_NOTIFY_URL", "").strip()
-            or f"{base_url}/api/tickets/live-events"
-        )
+        endpoint = os.getenv("DASHBOARD_TICKET_NOTIFY_URL", "").strip() or f"{base_url}/api/tickets/live-events"
         secret = os.getenv("TICKETS_BOT_API_SECRET") or os.getenv("CONTROL_API_SECRET")
         if not endpoint or not secret:
             return
@@ -65,10 +64,10 @@ class TicketCreationService:
                     if resp.status >= 400:
                         body = await resp.text()
                         log_tasks.warning(
-                            f"Dashboard new-ticket notify failed ({resp.status}): {body[:200]}"
+                            "Dashboard new-ticket notify failed (%s): %s", resp.status, body[:200]
                         )
-        except Exception as e:
-            log_tasks.warning(f"Dashboard new-ticket notify error: {e}")
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+            log_tasks.warning("Dashboard new-ticket notify error: %s", e)
 
     @TaskDecorator.task("Get Ticket Count", False)
     async def get_ticket_count(self) -> int:
@@ -94,7 +93,7 @@ class TicketCreationService:
             if channel is None:
                 return "`❌` The verify channel was not found!"
             log_tasks.warning(
-                f"{interaction.user} ({interaction.user.id}) is not verified and tried to open a ticket"
+                "%s (%s) is not verified and tried to open a ticket", interaction.user, interaction.user.id
             )
             return f"`❌` You are not verified! Go to the {channel.mention} channel and verify yourself first."
         return None
@@ -108,7 +107,9 @@ class TicketCreationService:
         open_ticket_count = row[0]["open_ticket_count"]
         if open_ticket_count >= 5:
             log_tasks.warning(
-                f"{interaction.user} ({interaction.user.id}) has 5 tickets open and tried to open a ticket"
+                "%s (%s) has 5 tickets open and tried to open a ticket",
+                interaction.user,
+                interaction.user.id,
             )
             return "`❌` Failed! You already have **5** tickets open!"
         return None
@@ -122,19 +123,23 @@ class TicketCreationService:
         if row:
             blacklist_reason = row[0]["reason"]
             log_tasks.warning(
-                f"{interaction.user} ({interaction.user.id}) is blacklisted from tickets and tried to open a ticket"
+                "%s (%s) is blacklisted from tickets and tried to open a ticket",
+                interaction.user,
+                interaction.user.id,
             )
             return f"`❌` You are currently **blacklisted** from creating tickets for the following reason\n```{blacklist_reason}```"
         return None
 
     @TaskDecorator.task("Check Disabled", False)
     async def check_disabled(self, interaction: discord.Interaction) -> str | None:
-        with open("assets/tickets.json", "r") as file:
+        with open("assets/tickets.json", encoding="utf-8") as file:
             info = json.load(file)
 
         if info["TOGGLE_STATUS"] == "Disabled":
             log_tasks.warning(
-                f"{interaction.user} ({interaction.user.id}) tried to open a ticket when tickets are disabled"
+                "%s (%s) tried to open a ticket when tickets are disabled",
+                interaction.user,
+                interaction.user.id,
             )
             return "`❌` Tickets are currently unavailable, please check again shortly."
 
@@ -155,7 +160,10 @@ class TicketCreationService:
 
         if ticket_data.get("Status") == "Disabled":
             log_tasks.warning(
-                f"{interaction.user} ({interaction.user.id}) tried to open a {category_name} ticket when it is disabled"
+                "%s (%s) tried to open a %s ticket when it is disabled",
+                interaction.user,
+                interaction.user.id,
+                category_name,
             )
             return f"`❌` {category_name} tickets are currently unavailable, please check again shortly."
         return None
@@ -178,7 +186,11 @@ class TicketCreationService:
             last_opened = float(row[0]["opened_at"])
             if time.time() - last_opened < 300:
                 log_tasks.warning(
-                    f"{interaction.user} ({interaction.user.id}) opened a ticket too recent {int((time.time() - last_opened)//60)}m {int((time.time() - last_opened)%60)}s ago."
+                    "%s (%s) opened a ticket too recent %sm %ss ago.",
+                    interaction.user,
+                    interaction.user.id,
+                    int((time.time() - last_opened) // 60),
+                    int((time.time() - last_opened) % 60),
                 )
                 return "`❌` You're opening tickets too fast! Please try again later."
         return None
@@ -201,7 +213,11 @@ class TicketCreationService:
             last_closed = int(row[0]["closed_at"])
             if time.time() - last_closed < 120:
                 log_tasks.warning(
-                    f"{interaction.user} ({interaction.user.id}) had a recently closed ticket {int((time.time() - last_closed)//60)}m {int((time.time() - last_closed)%60)}s ago."               
+                    "%s (%s) had a recently closed ticket %sm %ss ago.",
+                    interaction.user,
+                    interaction.user.id,
+                    int((time.time() - last_closed) // 60),
+                    int((time.time() - last_closed) % 60),
                 )
                 return "`❌` Your last ticket was just closed! Please try again later."
         return None
@@ -313,10 +329,7 @@ class TicketCreationService:
             file=discord.File("assets/Logo.png"),
         )
         privated = ""
-        if any(
-            substring in ticket_type
-            for substring in ["Store Support", "Discord Issues", "Connection Issues"]
-        ):
+        if any(substring in ticket_type for substring in ["Store Support", "Discord Issues", "Connection Issues"]):
             privated = "Admin"
         elif "Management Contact" in ticket_type:
             privated = "Management"
@@ -339,36 +352,47 @@ class TicketCreationService:
 
         return channel
 
-    @TaskDecorator.task(action_name = "New Ticket")
+    @TaskDecorator.task(action_name="New Ticket")
     async def new_ticket(self, interaction: discord.Interaction, view: discord.ui.View) -> None:
         embed = discord.Embed(
-            description = f"📖 Attempting to create a new ticket for {interaction.user.mention}",
-            color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
+            description=f"📖 Attempting to create a new ticket for {interaction.user.mention}",
+            color=discord.Color.from_str(ConfigManager.get(key="EMBED_COLOR")),
         )
 
-        await interaction.response.send_message(embed = embed, ephemeral = True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         start = time.perf_counter()
 
         if not interaction.message:
-            await interaction.response.send_message(content = "`❌` Failed to edit the original interaction message")
+            await interaction.response.send_message(content="`❌` Failed to edit the original interaction message")
         else:
-            await interaction.message.edit(view = view)
+            await interaction.message.edit(view=view)
 
-        result = await self.check(interaction = interaction)
+        result = await self.check(interaction=interaction)
         if result:
             embed: discord.Embed = discord.Embed(
-                description = result,
-                color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
+                description=result,
+                color=discord.Color.from_str(ConfigManager.get(key="EMBED_COLOR")),
             )
-            await interaction.edit_original_response(embed = embed)
+            await interaction.edit_original_response(embed=embed)
             return
 
-        channel = await self.create_ticket(interaction = interaction)
+        channel = await self.create_ticket(interaction=interaction)
         if channel is None:
-            await interaction.edit_original_response(embed = discord.Embed(
-                description = "`❌` Failed to create a ticket",
-                color = discord.Color.from_str(ConfigManager.get(key = "EMBED_COLOR")),
-            ))
+            await interaction.edit_original_response(
+                embed=discord.Embed(
+                    description="`❌` Failed to create a ticket",
+                    color=discord.Color.from_str(ConfigManager.get(key="EMBED_COLOR")),
+                )
+            )
             return
         ticket_count: int = await self.get_ticket_count()
-        log_tasks.info(f"Created #{channel} ({channel.id}) {channel.category.name if channel.category is not None else 'None'} in {str(round((time.perf_counter() - start), 2))}s by {interaction.user} ({interaction.user.id}) {ticket_count}")
+        log_tasks.info(
+            "Created #%s (%s) %s in %ss by %s (%s) %s",
+            channel,
+            channel.id,
+            channel.category.name if channel.category is not None else "None",
+            str(round((time.perf_counter() - start), 2)),
+            interaction.user,
+            interaction.user.id,
+            ticket_count,
+        )

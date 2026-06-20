@@ -1,5 +1,6 @@
 import discord
 
+from core.errors.exceptions import DISCORD_API_ERRORS
 from services.embed_service import EmbedService
 
 LOGO = "assets/Logo.png"
@@ -19,7 +20,7 @@ class Paginator(discord.ui.View):
     async def send(self, interaction: discord.Interaction):
         try:
             await interaction.response.send_message(view=self, content="")
-        except Exception:
+        except (discord.InteractionResponded, *DISCORD_API_ERRORS):
             await interaction.edit_original_response(view=self, content="")
         await self.update_message(interaction)
 
@@ -31,9 +32,7 @@ class Paginator(discord.ui.View):
             description = "No data found."
         elif self.count:
             for index, item in enumerate(self.get_current_page_data()):
-                description += (
-                    f"**{(self.sep * self.current_page) - (self.sep - (index + 1))}.** {item}\n"
-                )
+                description += f"**{(self.sep * self.current_page) - (self.sep - (index + 1))}.** {item}\n"
         else:
             for item in self.get_current_page_data():
                 description += f"{item}\n"
@@ -57,15 +56,11 @@ class Paginator(discord.ui.View):
         is_last_page = self.current_page == total_pages
         self.first_page_button.disabled = is_first_page
         self.prev_button.disabled = is_first_page
-        self.first_page_button.style = (
-            discord.ButtonStyle.gray if is_first_page else discord.ButtonStyle.red
-        )
+        self.first_page_button.style = discord.ButtonStyle.gray if is_first_page else discord.ButtonStyle.red
         self.prev_button.style = discord.ButtonStyle.gray if is_first_page else discord.ButtonStyle.red
         self.next_button.disabled = is_last_page
         self.last_page_button.disabled = is_last_page
-        self.last_page_button.style = (
-            discord.ButtonStyle.gray if is_last_page else discord.ButtonStyle.red
-        )
+        self.last_page_button.style = discord.ButtonStyle.gray if is_last_page else discord.ButtonStyle.red
         self.next_button.style = discord.ButtonStyle.gray if is_last_page else discord.ButtonStyle.red
 
     def get_current_page_data(self):
@@ -76,9 +71,7 @@ class Paginator(discord.ui.View):
     def get_footer_text(self):
         total_pages = int(len(self.data) / self.sep)
         total_pages += 1 if int(len(self.data)) % self.sep != 0 else 0
-        footer_text: str = (
-            f"Page {self.current_page}/{total_pages} ({len(self.data)} total) | Minecadia Tickets Bot"
-        )
+        footer_text: str = f"Page {self.current_page}/{total_pages} ({len(self.data)} total) | Minecadia Tickets Bot"
         footer_text += self.sorted if self.sorted else ""
         return footer_text
 

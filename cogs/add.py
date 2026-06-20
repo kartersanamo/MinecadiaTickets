@@ -7,9 +7,11 @@ It is used to add a user to a ticket channel so that they can view it.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
@@ -22,22 +24,41 @@ from services.ticket_check_service import is_ticket
 class Add(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
         self.client: TicketsBot = client
+
     @TaskDecorator.task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         channel = require_text_channel(interaction.channel)
         rows = DatabasePool.execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (user.id,))
         if rows:
-            log_commands.warning(f"Failed to add {user} ({user.id}) to #{channel.name} ({channel.id}) as they are ticket blacklisted")
-            await interaction.response.send_message(content = "`❌` Failed! You cannot add this player to the ticket as they are currently ticket blacklisted!", ephemeral = True)
+            log_commands.warning(
+                "Failed to add %s (%s) to #%s (%s) as they are ticket blacklisted",
+                user,
+                user.id,
+                channel.name,
+                channel.id,
+            )
+            await interaction.response.send_message(
+                content="`❌` Failed! You cannot add this player to the ticket as they are currently ticket blacklisted!",
+                ephemeral=True,
+            )
             return True
         return False
 
-    @TaskDecorator.task("Check Timed Out", False)    
+    @TaskDecorator.task("Check Timed Out", False)
     async def check_timed_out(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         channel = require_text_channel(interaction.channel)
         if user.is_timed_out():
-            log_commands.warning(f"Failed to add {user} ({user.id}) to #{channel.name} ({channel.id}) as they are timed out")
-            await interaction.response.send_message(content = "`❌` Failed! You cannot add this player to the ticket as they are currently timed out!", ephemeral = True)
+            log_commands.warning(
+                "Failed to add %s (%s) to #%s (%s) as they are timed out",
+                user,
+                user.id,
+                channel.name,
+                channel.id,
+            )
+            await interaction.response.send_message(
+                content="`❌` Failed! You cannot add this player to the ticket as they are currently timed out!",
+                ephemeral=True,
+            )
             return True
         return False
 
@@ -52,17 +73,17 @@ class Add(commands.Cog):
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
         channel = require_text_channel(interaction.channel)
         embed = discord.Embed(
-            color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
-            description = f"{interaction.user.mention} has added {user.mention} to the ticket {channel.mention}"
+            color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+            description=f"{interaction.user.mention} has added {user.mention} to the ticket {channel.mention}",
         )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
-        embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
-        await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
+        embed.set_footer(text=ConfigManager.get("FOOTER"), icon_url=logo_url)
+        await interaction.response.send_message(embed=embed, file=discord.File("assets/Logo.png"))
 
     @is_ticket()
     @app_commands.guild_only()
-    @app_commands.command(name = "add", description = "Adds a user to the ticket")
-    @app_commands.describe(user = "The user to add to the ticket")
+    @app_commands.command(name="add", description="Adds a user to the ticket")
+    @app_commands.describe(user="The user to add to the ticket")
     async def add(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await self.add_command(interaction, user)
 
@@ -70,7 +91,7 @@ class Add(commands.Cog):
     async def add_command(self, interaction: discord.Interaction, user: discord.Member) -> None:
         blacklisted: bool = await self.check_blacklisted(interaction, user)
         timed_out: bool = await self.check_timed_out(interaction, user)
-        
+
         if not blacklisted and not timed_out:
             channel = require_text_channel(interaction.channel)
             await self.set_permissions(channel, user)

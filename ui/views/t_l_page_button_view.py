@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
 import discord
 
 from services.ticket_log_service import TicketLogService
@@ -13,7 +11,9 @@ class TLPageButton(discord.ui.Button):
     def __init__(self, emoji: str, action: str, state: TicketLogUIState, *, disabled: bool) -> None:
         self._state = state
         self._action = action
-        super().__init__(style=discord.ButtonStyle.secondary, emoji=emoji, custom_id=f"tl_pg_{action}", disabled=disabled)
+        super().__init__(
+            style=discord.ButtonStyle.secondary, emoji=emoji, custom_id=f"tl_pg_{action}", disabled=disabled
+        )
 
     async def callback(self, interaction: discord.Interaction) -> None:
         rows = TicketLogService.fetch_rows(

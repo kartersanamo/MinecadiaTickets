@@ -1,4 +1,5 @@
 """Shared analytics event logger for Minecadia bots."""
+
 from __future__ import annotations
 
 import logging
@@ -8,9 +9,9 @@ from datetime import date
 from typing import Optional
 
 try:
-    import mysql.connector
+    import mysql.connector as mysql_connector
 except ImportError:
-    mysql = None  # type: ignore
+    mysql_connector = None  # type: ignore[assignment,misc]
 
 try:
     import pymysql  # type: ignore[import-not-found]
@@ -18,6 +19,12 @@ except ImportError:
     pymysql = None  # type: ignore[assignment,misc]
 
 _log = logging.getLogger("analytics")
+
+_DB_ERRORS: tuple[type[BaseException], ...] = (OSError, ValueError, TypeError)
+if mysql_connector is not None:
+    _DB_ERRORS = _DB_ERRORS + (mysql_connector.Error,)
+if pymysql is not None:
+    _DB_ERRORS = _DB_ERRORS + (pymysql.Error,)
 
 TOTAL_STAT_FIELDS = frozenset(
     {
@@ -38,6 +45,7 @@ TOTAL_STAT_FIELDS = frozenset(
         "punishment_requests",
     }
 )
+
 
 class AnalyticsLogger:
     @staticmethod
@@ -61,10 +69,10 @@ class AnalyticsLogger:
         cfg = AnalyticsLogger._db_config()
         if not cfg:
             return None
-        if mysql is not None:
+        if mysql_connector is not None:
             try:
-                return mysql.connector.connect(**cfg)
-            except Exception as exc:
+                return mysql_connector.connect(**cfg)
+            except _DB_ERRORS as exc:
                 _log.debug("Analytics mysql.connector connect failed: %s", exc)
         if pymysql is not None:
             try:
@@ -77,7 +85,7 @@ class AnalyticsLogger:
                     autocommit=bool(cfg.get("autocommit", True)),
                     connect_timeout=5,
                 )
-            except Exception as exc:
+            except _DB_ERRORS as exc:
                 _log.debug("Analytics pymysql connect failed: %s", exc)
         return None
 
@@ -91,13 +99,13 @@ class AnalyticsLogger:
             cur.execute(sql, params)
             cur.close()
             return True
-        except Exception as exc:
+        except _DB_ERRORS as exc:
             _log.debug("Analytics SQL failed: %s — %s", sql[:80], exc)
             return False
         finally:
             try:
                 conn.close()
-            except Exception as close_exc:
+            except OSError as close_exc:
                 _log.debug("Analytics connection close failed: %s", close_exc)
 
     @staticmethod
@@ -144,9 +152,7 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_staff_message(cls, 
-        user_id: str, channel_id: str, char_count: int = 0
-    ) -> None:
+    def record_staff_message(cls, user_id: str, channel_id: str, char_count: int = 0) -> None:
         """#1 — Staff message in a tracked channel."""
         cls._execute(
             """INSERT INTO analytics_staff_messages_daily
@@ -155,7 +161,12 @@ class AnalyticsLogger:
                ON DUPLICATE KEY UPDATE
                  message_count = message_count + 1,
                  character_count = character_count + VALUES(character_count)""",
-            (cls._today(), str(user_id), str(channel_id), char_count,),
+            (
+                cls._today(),
+                str(user_id),
+                str(channel_id),
+                char_count,
+            ),
         )
 
     @classmethod
@@ -176,7 +187,8 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_member_event(cls, 
+    def record_member_event(
+        cls,
         event_type: str,
         user_id: str,
         *,
@@ -200,9 +212,7 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_voice_seconds(cls, 
-        user_id: str, channel_id: str, seconds: int
-    ) -> None:
+    def record_voice_seconds(cls, user_id: str, channel_id: str, seconds: int) -> None:
         """#4 — Voice time rollup."""
         if seconds <= 0:
             return
@@ -226,7 +236,8 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_mod_action(cls, 
+    def record_mod_action(
+        cls,
         action_type: str,
         actor_id: str,
         target_id: str,
@@ -252,9 +263,7 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_poll_vote(cls, 
-        poll_message_id: str, user_id: str, option_index: int
-    ) -> None:
+    def record_poll_vote(cls, poll_message_id: str, user_id: str, option_index: int) -> None:
         """#8 — Poll vote (upsert)."""
         cls._execute(
             """INSERT INTO analytics_poll_votes
@@ -266,7 +275,8 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_game_outcome(cls, 
+    def record_game_outcome(
+        cls,
         game_name: str,
         outcome: str,
         *,
@@ -302,7 +312,8 @@ class AnalyticsLogger:
         )
 
     @classmethod
-    def record_server_snapshot(cls, 
+    def record_server_snapshot(
+        cls,
         member_count: int,
         online_count: int,
         boost_tier: int,

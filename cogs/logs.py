@@ -7,8 +7,10 @@ the logs of the tickets in the server and the number of tickets open.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands, tasks
+
 import discord
+from discord.ext import commands, tasks
+
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
@@ -19,6 +21,7 @@ from core.loggers import log_commands
 class Logs(commands.Cog):
     def __init__(self, client: TicketsBot):
         self.client: TicketsBot = client
+
     @commands.Cog.listener()
     async def on_ready(self):
         # await self.update_ticket_vc_count_loop.start() Turned off due to rate limits
@@ -34,15 +37,15 @@ class Logs(commands.Cog):
     @TaskDecorator.task("Update Ticket VC Count")
     async def update_ticket_vc_count(self) -> None:
         new_ticket_count: int = await self.get_ticket_count()
-        guild = self.client.get_guild(ConfigManager.get('GUILD_ID'))
+        guild = self.client.get_guild(ConfigManager.get("GUILD_ID"))
         if guild is None:
             return
-        channel = guild.get_channel(ConfigManager.get('CHANNEL_IDS')['TICKET_COUNT_VOICE_CHANNEL_ID'])
+        channel = guild.get_channel(ConfigManager.get("CHANNEL_IDS")["TICKET_COUNT_VOICE_CHANNEL_ID"])
         if channel is None:
             return
-        await channel.edit(name = f"Tickets: {new_ticket_count}")
+        await channel.edit(name=f"Tickets: {new_ticket_count}")
 
-    @tasks.loop(minutes = 5)
+    @tasks.loop(minutes=5)
     async def update_ticket_vc_count_loop(self):
         await self.update_ticket_vc_count()
 
@@ -53,9 +56,9 @@ class Logs(commands.Cog):
                 return
             name = f"/{interaction.command.name}"
             try:
-                options = interaction.data.get('options') if interaction.data else None
+                options = interaction.data.get("options") if interaction.data else None
                 for option in options or []:
-                    value = option.get('value')
+                    value = option.get("value")
                     if value is not None:
                         name += f" {option['name']}:'{value}'"
             except KeyError:
@@ -63,7 +66,15 @@ class Logs(commands.Cog):
             channel_ref = interaction.channel
             channel_name = getattr(channel_ref, "name", "unknown")
             channel_id = getattr(channel_ref, "id", "unknown")
-            log_commands.info(f"{interaction.user} ({interaction.user.id}) ran {name} in #{channel_name} ({channel_id}) {not interaction.command_failed}")
+            log_commands.info(
+                "%s (%s) ran %s in #%s (%s) %s",
+                interaction.user,
+                interaction.user.id,
+                name,
+                channel_name,
+                channel_id,
+                not interaction.command_failed,
+            )
 
 
 async def setup(client: TicketsBot) -> None:

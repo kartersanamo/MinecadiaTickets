@@ -1,5 +1,27 @@
 """Application exceptions with safe user-facing messages."""
+
 from __future__ import annotations
+
+import json
+from typing import Tuple, Type
+
+import discord
+
+DISCORD_API_ERRORS: Tuple[Type[BaseException], ...] = (
+    discord.HTTPException,
+    discord.NotFound,
+    discord.Forbidden,
+)
+
+CONFIG_IO_ERRORS: Tuple[Type[BaseException], ...] = (
+    OSError,
+    json.JSONDecodeError,
+    KeyError,
+    ValueError,
+    TypeError,
+)
+
+UI_CALLBACK_ERRORS: Tuple[Type[BaseException], ...] = DISCORD_API_ERRORS + CONFIG_IO_ERRORS
 
 
 class UserFacingError(Exception):

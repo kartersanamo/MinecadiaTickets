@@ -6,13 +6,14 @@ Cog for the ticket logs command (Components V2 browser).
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from core.config import ConfigManager
 from core.decorators import TaskDecorator

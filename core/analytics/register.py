@@ -1,4 +1,5 @@
 """Register analytics cogs on this bot."""
+
 from __future__ import annotations
 
 from discord.ext import commands

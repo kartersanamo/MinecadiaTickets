@@ -7,6 +7,7 @@ It is used to track the analytics of the tickets in the server.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from core.analytics import logger as analytics
+from core.analytics.logger import AnalyticsLogger as analytics
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from services.active_ticket_cache import active_ticket_cache

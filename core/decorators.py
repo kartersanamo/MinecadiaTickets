@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import functools
 import time
 
@@ -20,10 +19,10 @@ class TaskDecorator:
                     time_elapsed = round((time.perf_counter() - start_time), 2)
                     if time_elapsed > 3:
                         log_tasks.warning(
-                            f"{action_name} took a long time to complete and finished in {time_elapsed}s"
+                            "%s took a long time to complete and finished in %ss", action_name, time_elapsed
                         )
                     elif log:
-                        log_tasks.info(f"{action_name} completed in {time_elapsed}s")
+                        log_tasks.info("%s completed in %ss", action_name, time_elapsed)
                     return result
                 except Exception as error:
                     ExceptionLogging.log_exception(

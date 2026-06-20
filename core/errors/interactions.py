@@ -1,4 +1,5 @@
 """Safe Discord interaction responses that avoid secondary failures."""
+
 from __future__ import annotations
 
 import discord

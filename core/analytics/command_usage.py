@@ -1,10 +1,11 @@
 """Slash command usage — load on every bot that serves app commands."""
+
 from __future__ import annotations
 
 import discord
 from discord.ext import commands
 
-from core.analytics import logger as analytics
+from core.analytics.logger import AnalyticsLogger as analytics
 
 
 class CommandUsageCog(commands.Cog):

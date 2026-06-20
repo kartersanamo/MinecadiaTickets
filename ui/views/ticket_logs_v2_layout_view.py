@@ -55,7 +55,9 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
             inner.append(discord.ui.TextDisplay(title_md))
 
     def _build_detail(self, inner: list, interaction: discord.Interaction, accent: int) -> None:
-        row = TicketLogService.row_by_channel(self._rows, self.state.detail_channel_id) or TicketLogService.fetch_row_by_channel(
+        row = TicketLogService.row_by_channel(
+            self._rows, self.state.detail_channel_id
+        ) or TicketLogService.fetch_row_by_channel(
             int(self.state.detail_channel_id) if self.state.detail_channel_id is not None else 0
         )
         if not row:
@@ -80,7 +82,9 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
             ar.add_item(discord.ui.Button(style=discord.ButtonStyle.link, label="Transcript", url=transcript))
         inner.append(ar)
 
-    def _build_list(self, inner: list, interaction: discord.Interaction, accent: int, rows: List[Dict[str, Any]]) -> None:
+    def _build_list(
+        self, inner: list, interaction: discord.Interaction, accent: int, rows: List[Dict[str, Any]]
+    ) -> None:
         total = len(rows)
         max_page = max(0, (total - 1) // TicketLogService.PAGE_SIZE) if total else 0
         self.state.page = min(self.state.page, max_page)
@@ -101,7 +105,10 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
         if len(all_types) > 1:
             inner.append(discord.ui.ActionRow(TLTypeSelect(self.state, all_types[:24])))
 
-        slice_rows = rows[self.state.page * TicketLogService.PAGE_SIZE : self.state.page * TicketLogService.PAGE_SIZE + TicketLogService.PAGE_SIZE]
+        slice_rows = rows[
+            self.state.page * TicketLogService.PAGE_SIZE : self.state.page * TicketLogService.PAGE_SIZE
+            + TicketLogService.PAGE_SIZE
+        ]
         inner.append(discord.ui.ActionRow(TLPickSelect(self.state, slice_rows, total)))
 
         page_count = max_page + 1 if total else 1
@@ -127,5 +134,5 @@ class TicketLogsV2Layout(discord.ui.LayoutView):
     def content_length_safe(self) -> int:
         try:
             return self.content_length()
-        except Exception:
+        except (AttributeError, TypeError, RuntimeError):
             return 0

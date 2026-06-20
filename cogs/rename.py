@@ -7,16 +7,19 @@ It is used to rename a ticket channel to a new name.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
+
 import asyncio
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_text_channel
-from services.ticket_check_service import is_ticket
 from services.ticket_channel_ordering import TicketChannelOrdering
+from services.ticket_check_service import is_ticket
 
 
 class Rename(commands.Cog):
@@ -36,8 +39,7 @@ class Rename(commands.Cog):
     ) -> None:
         rename_embed = discord.Embed(
             description=(
-                f"{interaction.user.mention} has changed the ticket name from "
-                f"**{old_name}** to **{new_name}**."
+                f"{interaction.user.mention} has changed the ticket name from " f"**{old_name}** to **{new_name}**."
             ),
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
