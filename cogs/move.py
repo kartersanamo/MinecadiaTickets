@@ -11,17 +11,19 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 import asyncio
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 from services.ticket_channel_ordering import TicketChannelOrdering
 
 
 class Move(commands.Cog):
-    def __init__(self, client: commands.Bot):
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot):
+        self.client: TicketsBot = client
     @TaskDecorator.task("Defer Response", False)
     async def defer_response(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
@@ -44,8 +46,9 @@ class Move(commands.Cog):
 
     @TaskDecorator.task("Move Categories", False)
     async def move_categories(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
-        position = TicketChannelOrdering.get_ticket_position(category, interaction.channel)
-        await interaction.channel.edit(category = category, position = position)
+        channel = require_text_channel(interaction.channel)
+        position = TicketChannelOrdering.get_ticket_position(category, channel)
+        await channel.edit(category = category, position = position)
 
     @TaskDecorator.task("Update Database", False)
     async def update_database(self, category_name: str, channel_id: int) -> None:
@@ -72,15 +75,18 @@ class Move(commands.Cog):
 
     @TaskDecorator.task("Set Permissions", False)
     async def set_permissions(self, interaction: discord.Interaction, new_category_id: int) -> None:
-        permissions = interaction.channel.overwrites.items()
-        while interaction.channel.category.id != new_category_id:
+        guild = require_guild(interaction.guild)
+        channel = require_text_channel(interaction.channel)
+        permissions = channel.overwrites.items()
+        while channel.category is None or channel.category.id != new_category_id:
             await asyncio.sleep(0.5)
-        await interaction.channel.edit(sync_permissions = True)
+        await channel.edit(sync_permissions = True)
         for key, value in permissions:
-            if isinstance(key, discord.Member) or key == interaction.guild.default_role:
-                await interaction.channel.set_permissions(key, overwrite = value)
-        staff_team = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
-        await interaction.channel.set_permissions(staff_team, view_channel = False)
+            if isinstance(key, (discord.Member, discord.Role)):
+                await channel.set_permissions(key, overwrite = value)
+        staff_team = guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
+        if staff_team is not None:
+            await channel.set_permissions(staff_team, view_channel = False)
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, category_name: str) -> None:
@@ -100,17 +106,18 @@ class Move(commands.Cog):
         await self.move_command(interaction, category)
 
     @TaskDecorator.task("Move Command", True)
-    async def move_command(self, interaction, category) -> None:
+    async def move_command(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> None:
         blacklisted_category = await self.check_blacklisted_category(interaction, category)
         not_a_ticket_category = await self.check_ticket_category(interaction, category) 
         if not blacklisted_category and not not_a_ticket_category:
-            await self.defer_response(interaction) 
+            await self.defer_response(interaction)
+            channel = require_text_channel(interaction.channel)
             await self.move_categories(interaction, category)
-            await self.update_database(category.name, interaction.channel.id)
+            await self.update_database(category.name, channel.id)
             await self.set_permissions(interaction, category.id)
             await self.send_embed(interaction, category.name)
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(Move(client))

@@ -7,24 +7,29 @@ It is used to send a message prompt to the ticket channel.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
-from typing import Literal
+from typing import Literal, Optional
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_text_channel
 from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
 from ui.views.tickets_view2_view import TicketsView2
 
 class TicketsSend(commands.Cog):
-    def __init__(self, client: commands.Bot):
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot):
+        self.client: TicketsBot = client
     @app_commands.guild_only() 
     @app_commands.command(name = "send-tickets", description = "Sends a message prompt.")
     @app_commands.describe(option = "The message that you'd wish to send")
-    async def send_tickets(self, interaction: discord.Interaction, option: Literal["Tickets"], channel: discord.TextChannel = None) -> None:
-        await self.send_tickets_command(interaction, option, channel if channel else interaction.channel)
+    async def send_tickets(self, interaction: discord.Interaction, option: Literal["Tickets"], channel: Optional[discord.TextChannel] = None) -> None:
+        target = channel if channel is not None else require_text_channel(interaction.channel)
+        await self.send_tickets_command(interaction, option, target)
 
     @TaskDecorator.task("SendTickets Command", True)
     async def send_tickets_command(self, interaction: discord.Interaction, option: str, channel: discord.TextChannel) -> None:
@@ -70,5 +75,5 @@ class TicketsSend(commands.Cog):
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(TicketsSend(client))

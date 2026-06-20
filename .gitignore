@@ -5,6 +5,7 @@
 logs/
 .vscode/*
 
-# Auto-generated diagrams (regenerate: python3 ../scripts/generate_bot_diagrams.py MinecadiaTickets)
+# Diagrams
 docs/diagrams/*
 !docs/diagrams/.gitkeep
+*.svg

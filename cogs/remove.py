@@ -10,14 +10,16 @@ License: MIT
 from discord.ext import commands
 from discord import app_commands
 import discord
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 
 class Remove(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
 
     @staticmethod
     def _hierarchy_role_ids() -> set[int]:
@@ -61,9 +63,10 @@ class Remove(commands.Cog):
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
+        channel = require_text_channel(interaction.channel)
         embed = discord.Embed(
             color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
-            description = f"{interaction.user.mention} has removed {user.mention} from the ticket {interaction.channel.mention}"
+            description = f"{interaction.user.mention} has removed {user.mention} from the ticket {channel.mention}"
         )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
         embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
@@ -73,7 +76,8 @@ class Remove(commands.Cog):
     async def check_higher_rank(self, interaction: discord.Interaction, user: discord.Member) -> bool:
         if not isinstance(interaction.user, discord.Member):
             return False
-        staff_team_role = interaction.guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
+        guild = require_guild(interaction.guild)
+        staff_team_role = guild.get_role(ConfigManager.get('ROLE_IDS')['STAFF_TEAM_ROLE_ID'])
         if staff_team_role is None or staff_team_role not in user.roles:
             return False
         role_id_1 = self._get_comparison_role_id(user)
@@ -97,10 +101,11 @@ class Remove(commands.Cog):
     async def remove_command(self, interaction: discord.Interaction, user: discord.Member) -> None:
         removing_higher: bool = await self.check_higher_rank(interaction, user)
         if not removing_higher:
-            await self.remove_permissions(interaction.channel, user)
+            channel = require_text_channel(interaction.channel)
+            await self.remove_permissions(channel, user)
             await self.send_embed(interaction, user)
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(Remove(client))

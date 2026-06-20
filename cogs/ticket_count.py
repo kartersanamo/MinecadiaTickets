@@ -7,17 +7,20 @@ the number of tickets open in the server.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
-from discord.ext import commands
-from discord import app_commands
-from typing import Literal
+from typing import Literal, Optional
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 
 class TicketCount(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
     @TaskDecorator.task("Get Active List", False)
     async def get_active_list(self) -> list[dict]:
         rows = DatabasePool.execute("SELECT type, COUNT(*) as count FROM tickets WHERE is_active = 1 GROUP BY type ORDER BY count DESC")
@@ -46,11 +49,11 @@ class TicketCount(commands.Cog):
 
     @app_commands.guild_only()
     @app_commands.command(name = "ticket-count", description = "Sends the number of currently opened tickets")
-    async def ticketcount(self, interaction: discord.Interaction, debug: Literal['Yes'] = None):
+    async def ticketcount(self, interaction: discord.Interaction, debug: Optional[Literal['Yes']] = None):
         await self.ticket_count_command(interaction, debug)
 
     @TaskDecorator.task("Ticket Count Command", True)
-    async def ticket_count_command(self, interaction: discord.Interaction, debug: str) -> None:
+    async def ticket_count_command(self, interaction: discord.Interaction, debug: Optional[Literal['Yes']] = None) -> None:
         active_list: list[dict] = await self.get_active_list()
         active_count: int = sum(row.get('count', 0) for row in active_list)
 
@@ -74,5 +77,5 @@ class TicketCount(commands.Cog):
 
 
 
-async def setup(client:commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(TicketCount(client))

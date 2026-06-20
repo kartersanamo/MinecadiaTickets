@@ -43,7 +43,8 @@ class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
             self.suffix = "%Y-%m-%d"
 
     def doRollover(self) -> None:
-        self.stream.close()
+        if self.stream is not None:
+            self.stream.close()
         current_time = int(self.rolloverAt - self.interval)
         dt: datetime.datetime = datetime.datetime.fromtimestamp(current_time, tz = EST)
         dfn: str = dt.strftime(self.suffix)

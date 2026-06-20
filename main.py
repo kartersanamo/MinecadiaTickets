@@ -10,26 +10,27 @@ License: MIT
 
 import os
 from pathlib import Path
-from discord.ext import commands
-from discord import app_commands
-from dotenv import load_dotenv
+
 import discord
+from discord import app_commands
+from discord.ext import commands
+from dotenv import load_dotenv
 
 os.chdir(path=Path(__file__).resolve().parent)
 
+from assets.dashboard_http import DashboardHttp
 from core.analytics.register import CommandTrackingRegistrar
-from core.guild_command_sync import GuildCommandSync
-from core.loggers import log_commands, log_tasks
-from core.liveness import mark_disconnected
+from core.app import BotApp
+from core.bot_client import TicketsBot
+from core.config import ConfigManager
 from core.decorators import TaskDecorator
 from core.errors.setup import ErrorSetup
-from core.liveness import mark_connected
-from core.config import ConfigManager
-from core.app import BotApp
-from assets.dashboard_http import DashboardHttp
-from ui.views.tickets_view2_view import TicketsView2
+from core.guild_command_sync import GuildCommandSync
+from core.liveness import mark_connected, mark_disconnected
+from core.loggers import log_commands, log_tasks
 from ui.views.ticket_logs_view import TicketLogs
 from ui.views.tickets_view import TicketsView
+from ui.views.tickets_view2_view import TicketsView2
 
 _bots_env: Path = (
     Path(__file__).resolve().parent.parent.parent.parent / "Websites" / "Bots" / ".env"
@@ -45,13 +46,13 @@ COG_FILES: list[str] = [
 ]
 
 
-class Client(commands.Bot):
+class Client(TicketsBot):
     def __init__(self) -> None:
         super().__init__(command_prefix=".", intents=discord.Intents().all())
         ErrorSetup.wire_bot(
             bot=self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks
         )
-        self.app: BotApp
+        self.app: BotApp  # initialized in setup_hook
         log_tasks.info(msg="Initialized the bot client")
 
     @TaskDecorator.task(action_name="Setup Cogs")

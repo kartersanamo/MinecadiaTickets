@@ -10,7 +10,7 @@ from core.loggers import log_tasks
 
 class TaskDecorator:
     @staticmethod
-    def task(action_name: str, log: bool = None):
+    def task(action_name: str, log: bool | None = None):
         def decorator(func):
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):

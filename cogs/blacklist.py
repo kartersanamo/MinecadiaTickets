@@ -10,7 +10,9 @@ License: MIT
 from discord.ext import commands, tasks
 from discord import app_commands
 from discord import Webhook
-from typing import Literal
+from typing import Literal, Optional
+
+from core.bot_client import TicketsBot
 import datetime
 import aiohttp
 import discord
@@ -21,11 +23,11 @@ from core.decorators import TaskDecorator
 from core.loggers import log_commands, log_tasks
 
 class Blacklist(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
         self.check_blacklists.start()
   
-    def cog_unload(self) -> None:
+    async def cog_unload(self) -> None:
         self.check_blacklists.stop()
 
     @tasks.loop(minutes = 10)
@@ -64,7 +66,7 @@ class Blacklist(commands.Cog):
         return False
 
     @TaskDecorator.task("Blacklist User", False)
-    async def blacklist_user(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:
+    async def blacklist_user(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
         unix = await self.get_unix(length)
         DatabasePool.execute(
             "INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at) VALUES (%s, %s, %s, %s, %s)",
@@ -82,7 +84,7 @@ class Blacklist(commands.Cog):
         await interaction.response.send_message(embed = embed, file = discord.File("assets/Logo.png"))
 
     @TaskDecorator.task("Send Webhook", False)
-    async def send_webhook(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str) -> None:
+    async def send_webhook(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
         unix: int = await self.get_unix(length)
         embed = discord.Embed(
             title = "Ticket Blacklist", 
@@ -99,11 +101,11 @@ class Blacklist(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(name = "blacklist", description = "Blacklists a member from opening tickets")
     @app_commands.describe(user = "The user to blacklist from opening tickets", length = "When this user should be unblacklisted from tickets", reason = "The reason for blacklisting the user")
-    async def blacklist(self, interaction: discord.Interaction, user: discord.Member, length: Literal["1d", "2d", "3d", "4d", "5d", "6d", "7d", "10d", "14d", "28d", "30d"], reason: str = None) -> None:
+    async def blacklist(self, interaction: discord.Interaction, user: discord.Member, length: Literal["1d", "2d", "3d", "4d", "5d", "6d", "7d", "10d", "14d", "28d", "30d"], reason: Optional[str] = None) -> None:
         await self.blacklist_command(interaction, user, length, reason)
     
     @TaskDecorator.task("Blacklist Command", True)
-    async def blacklist_command(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: str = None) -> None:
+    async def blacklist_command(self, interaction: discord.Interaction, user: discord.Member, length: str, reason: Optional[str] = None) -> None:
         blacklisted: bool = await self.check_blacklisted(interaction, user)
         if not blacklisted:
             await self.blacklist_user(interaction, user, length, reason)
@@ -112,5 +114,5 @@ class Blacklist(commands.Cog):
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
   await client.add_cog(Blacklist(client))

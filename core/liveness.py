@@ -144,8 +144,8 @@ async def _probe_discord(bot: commands.Bot) -> None:
     await asyncio.wait_for(bot.fetch_user(bot.user.id), timeout=15.0)
 
     # Presence updates go through the gateway; catches zombie REST-only states.
-    activity = None
-    if bot.activity:
+    activity: discord.BaseActivity | None = None
+    if bot.activity and isinstance(bot.activity, discord.BaseActivity):
         activity = bot.activity
     await asyncio.wait_for(bot.change_presence(activity=activity), timeout=15.0)
 

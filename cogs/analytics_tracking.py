@@ -15,12 +15,13 @@ import discord
 from discord.ext import commands
 
 from core.analytics import logger as analytics
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from services.active_ticket_cache import active_ticket_cache
 
 
 class TicketAnalytics(commands.Cog):
-    def __init__(self, client: commands.Bot):
+    def __init__(self, client: TicketsBot):
         self.client = client
 
     def _is_staff(self, member: discord.Member) -> bool:
@@ -43,6 +44,9 @@ class TicketAnalytics(commands.Cog):
         if not owner_id:
             return
 
+        if not isinstance(message.author, discord.Member):
+            return
+
         is_staff = self._is_staff(message.author)
         if str(message.author.id) == owner_id:
             is_staff = False
@@ -53,5 +57,5 @@ class TicketAnalytics(commands.Cog):
         )
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(TicketAnalytics(client))

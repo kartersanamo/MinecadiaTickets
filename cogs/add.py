@@ -10,29 +10,33 @@ License: MIT
 from discord.ext import commands
 from discord import app_commands
 import discord
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_text_channel
 from core.loggers import log_commands
 from services.ticket_check_service import is_ticket
 
 
 class Add(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
     @TaskDecorator.task("Check Blacklisted", False)
     async def check_blacklisted(self, interaction: discord.Interaction, user: discord.Member) -> bool:
+        channel = require_text_channel(interaction.channel)
         rows = DatabasePool.execute("SELECT 1 FROM blacklists WHERE user_id = %s LIMIT 1", (user.id,))
         if rows:
-            log_commands.warning(f"Failed to add {user} ({user.id}) to #{interaction.channel.name} ({interaction.channel.id}) as they are ticket blacklisted")
+            log_commands.warning(f"Failed to add {user} ({user.id}) to #{channel.name} ({channel.id}) as they are ticket blacklisted")
             await interaction.response.send_message(content = "`❌` Failed! You cannot add this player to the ticket as they are currently ticket blacklisted!", ephemeral = True)
             return True
         return False
 
     @TaskDecorator.task("Check Timed Out", False)    
     async def check_timed_out(self, interaction: discord.Interaction, user: discord.Member) -> bool:
+        channel = require_text_channel(interaction.channel)
         if user.is_timed_out():
-            log_commands.warning(f"Failed to add {user} ({user.id}) to #{interaction.channel.name} ({interaction.channel.id}) as they are timed out")
+            log_commands.warning(f"Failed to add {user} ({user.id}) to #{channel.name} ({channel.id}) as they are timed out")
             await interaction.response.send_message(content = "`❌` Failed! You cannot add this player to the ticket as they are currently timed out!", ephemeral = True)
             return True
         return False
@@ -46,9 +50,10 @@ class Add(commands.Cog):
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
+        channel = require_text_channel(interaction.channel)
         embed = discord.Embed(
             color = discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), 
-            description = f"{interaction.user.mention} has added {user.mention} to the ticket {interaction.channel.mention}"
+            description = f"{interaction.user.mention} has added {user.mention} to the ticket {channel.mention}"
         )
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
         embed.set_footer(text = ConfigManager.get("FOOTER"), icon_url = logo_url)
@@ -67,9 +72,10 @@ class Add(commands.Cog):
         timed_out: bool = await self.check_timed_out(interaction, user)
         
         if not blacklisted and not timed_out:
-            await self.set_permissions(interaction.channel, user)
+            channel = require_text_channel(interaction.channel)
+            await self.set_permissions(channel, user)
             await self.send_embed(interaction, user)
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(Add(client))

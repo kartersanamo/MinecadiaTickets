@@ -9,9 +9,9 @@ from core.errors.exceptions import ExternalServiceError
 T = TypeVar("T")
 
 try:
-    import aiomysql
+    import aiomysql  # type: ignore[import-not-found]
 except ImportError:
-    aiomysql = None  # type: ignore
+    aiomysql = None  # type: ignore[assignment,misc]
 
 
 class DatabaseErrors:

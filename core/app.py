@@ -1,4 +1,4 @@
-from discord.ext import commands
+from core.bot_client import TicketsBot
 
 from core.config import ConfigManager
 from core.database import DatabasePool
@@ -12,7 +12,7 @@ from services.time_format_service import TimeFormatService
 
 
 class BotApp:
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: TicketsBot):
         self.bot = bot
         self.settings = ConfigManager.all()
         self.db = DatabasePool.get()
@@ -25,5 +25,5 @@ class BotApp:
         self.time_format = TimeFormatService()
 
     @classmethod
-    def from_bot(cls, bot: commands.Bot) -> "BotApp":
+    def from_bot(cls, bot: TicketsBot) -> "BotApp":
         return cls(bot)

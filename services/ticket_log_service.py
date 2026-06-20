@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import discord
 import pytz
 
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 
@@ -159,7 +160,10 @@ class TicketLogService:
         cfg: dict,
     ) -> Tuple[List[discord.File], Optional[str]]:
         path = cfg.get("LOGO")
-        url = interaction.client.app.embeds.get_logo_url(path)
+        client = interaction.client
+        if not isinstance(client, TicketsBot):
+            return [], None
+        url = client.app.embeds.get_logo_url(path)
         files: List[discord.File] = []
         if not url:
             return [], None

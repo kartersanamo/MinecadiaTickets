@@ -10,14 +10,16 @@ License: MIT
 from discord.ext import commands
 from discord import app_commands
 import discord
+from core.bot_client import TicketsBot
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_guild
 from ui.views.paginator import Paginator
 
 
 class BlacklistList(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
 
     @TaskDecorator.task("Send Paginator")
     async def send_paginator(self, interaction: discord.Interaction, data: list) -> None:
@@ -30,12 +32,13 @@ class BlacklistList(commands.Cog):
     @TaskDecorator.task("Get Blacklist Data")
     async def get_blacklist_data(self, interaction: discord.Interaction, rows: list) -> list:
         blacklist_data: list = []
+        guild = require_guild(interaction.guild)
         for row in rows:
             user_id = int(row['user_id'])
             staff_id = int(row['staff_id'])
             reason = row['reason']
-            user: discord.Member = interaction.guild.get_member(user_id)
-            staff: discord.Member = interaction.guild.get_member(staff_id)
+            user = guild.get_member(user_id)
+            staff = guild.get_member(staff_id)
             if user:
                 user_name: str = user.display_name
             else:
@@ -65,5 +68,5 @@ class BlacklistList(commands.Cog):
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(BlacklistList(client))

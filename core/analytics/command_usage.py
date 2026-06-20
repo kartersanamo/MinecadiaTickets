@@ -14,6 +14,8 @@ class CommandUsageCog(commands.Cog):
             return
         if not interaction.command:
             return
+        if interaction.client.user is None:
+            return
         analytics.record_command(
             str(interaction.client.user.id),
             interaction.command.qualified_name,

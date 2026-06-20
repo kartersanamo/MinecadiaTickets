@@ -26,16 +26,18 @@ class Paginator(discord.ui.View):
     def create_embed(self):
         embed = discord.Embed(title=self.title, description="", color=discord.Color.gold())
         footer_text = self.get_footer_text()
+        description = ""
         if self.data[0] == "No data found.":
-            embed.description = "No data found."
+            description = "No data found."
         elif self.count:
             for index, item in enumerate(self.get_current_page_data()):
-                embed.description += (
+                description += (
                     f"**{(self.sep * self.current_page) - (self.sep - (index + 1))}.** {item}\n"
                 )
         else:
             for item in self.get_current_page_data():
-                embed.description += f"{item}\n"
+                description += f"{item}\n"
+        embed.description = description
         if footer_text is not None:
             logo_url = EmbedService.get_logo_url(LOGO) if LOGO else None
             if logo_url is not None:

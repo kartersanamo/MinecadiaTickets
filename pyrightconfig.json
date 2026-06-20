@@ -1,0 +1,15 @@
+{
+  "include": ["."],
+  "exclude": [
+    "**/__pycache__",
+    ".venv",
+    "logs",
+    "pyright_full.txt"
+  ],
+  "pythonVersion": "3.11",
+  "venvPath": ".",
+  "venv": ".venv",
+  "stubPath": "typings",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": false
+}

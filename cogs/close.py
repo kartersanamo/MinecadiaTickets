@@ -17,23 +17,27 @@ import discord
 import asyncio
 import time
 import pytz
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_guild, require_member, require_text_channel
 from core.loggers import log_commands, log_tasks
 from services.ticket_check_service import is_ticket
 from services.statistics_service import is_found
 
 class Close(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
-    def convert_to_est(self, timestamp: str) -> str:
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
+
+    def convert_to_est(self, timestamp: int | float | str) -> str:
         try:
             est_time = datetime.datetime.fromtimestamp(int(float(timestamp)), tz = pytz.utc).astimezone(pytz.timezone('US/Eastern'))
             return est_time.strftime('%a, %b %d, %Y, %I:%M:%S %p') + " EST"
         
         except Exception as error:
             log_commands.warning(f"Failed to convert the timestamp to EST {error}")
+            return "N/A"
 
     @TaskDecorator.task("Get Transcript Link")
     async def return_link(self, content) -> str:
@@ -119,7 +123,7 @@ class Close(commands.Cog):
         return message_content
 
     @TaskDecorator.task("Generate Transcript Content")
-    async def generate_transcript_content(self, messages: list[discord.Message], opened_string: str, ticket_type: str, ticket_number: str, owner: discord.Member, owner_id: int, reason: str, closed_by: discord.Member, channel_id: int, closed_at_string: str, closed_by_id: int) -> str:
+    async def generate_transcript_content(self, messages: list[discord.Message], opened_string: str, ticket_type: str, ticket_number: str, owner: discord.abc.User, owner_id: int, reason: str, closed_by: discord.Member, channel_id: int, closed_at_string: str, closed_by_id: int) -> str:
         content: str = f"Minecadia Tickets Bot: {ticket_type}\n- Opened by: {owner} ({owner_id})\n- Opened at: {opened_string}\n- Channel ID: {channel_id}\n- Ticket ID: {ticket_number}\n \n──────────────────────────────────────────────────────\n \n"
         for message in messages:
             try:
@@ -141,9 +145,9 @@ class Close(commands.Cog):
         return content
 
     @TaskDecorator.task("Get Ticketlog Embed")
-    async def get_ticket_log(self, reason: str, opened_timestamp: int, ticket_number: str, owner_mention: str, owner: discord.Member, link: str, ticket_type: str, closed_at_timestamp: int, closed_by: discord.Member) -> discord.Embed:
+    async def get_ticket_log(self, reason: str, opened_timestamp: int | str, ticket_number: str, owner_mention: str, owner: discord.abc.User, link: str, ticket_type: str, closed_at_timestamp: int, closed_by: discord.Member) -> discord.Embed:
         delta = "N/A"
-        if opened_timestamp != "N/A":
+        if isinstance(opened_timestamp, int):
             seconds = closed_at_timestamp - opened_timestamp
             delta = self.client.app.time_format.seconds_to_format(seconds)
         
@@ -174,6 +178,9 @@ class Close(commands.Cog):
         )
         ticket_log_channel_id = ConfigManager.get("CHANNEL_IDS")[channel_json_string]
         ticket_log_channel = guild.get_channel(ticket_log_channel_id)
+        if not isinstance(ticket_log_channel, discord.TextChannel):
+            log_tasks.warning("Ticket log channel %s is unavailable", ticket_log_channel_id)
+            return
         await ticket_log_channel.send(
             embed=embed, file=discord.File("assets/Logo.png")
         )
@@ -227,7 +234,9 @@ class Close(commands.Cog):
 
     @TaskDecorator.task("Fetch Ticket Info")
     async def fetch_ticket_info(self, channel_id: int) -> tuple:
-        bot_account: discord.ClientUser = self.client.user
+        bot_account = self.client.user
+        if bot_account is None:
+            raise RuntimeError("Bot user is not available")
         info = (bot_account, bot_account.id, bot_account.mention, 0, "N/A", "0000", "Unknown", "", 0, "")
         row = DatabasePool.execute(
             "SELECT number, opened_at, privated, type, owner_id FROM tickets WHERE channel_id = %s",
@@ -240,7 +249,7 @@ class Close(commands.Cog):
             ticket_number: str = row["number"]
             privated: str = row["privated"]
             ticket_type: str = row["type"]
-            owner: discord.Member = await self.client.fetch_user(int(row["owner_id"]))
+            owner: discord.User = await self.client.fetch_user(int(row["owner_id"]))
             owner_id: int = owner.id
             owner_mention: str = owner.mention
             closed_at_timestamp: int = int(time.time())
@@ -265,12 +274,13 @@ class Close(commands.Cog):
     @TaskDecorator.task("Close Command", False)
     async def close_command(self, interaction: discord.Interaction, reason: str) -> None:
         await interaction.response.defer()
-        if interaction.guild is None:
-            return
+        guild = require_guild(interaction.guild)
+        channel = require_text_channel(interaction.channel)
+        closed_by = require_member(interaction.user)
         await self.close_ticket_channel(
-            interaction.guild,
-            interaction.channel,
-            interaction.user,
+            guild,
+            channel,
+            closed_by,
             reason,
         )
 
@@ -348,5 +358,5 @@ class Close(commands.Cog):
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(Close(client))

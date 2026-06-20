@@ -11,15 +11,21 @@ from discord.ext import commands
 from discord import app_commands
 import asyncio
 import discord
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_text_channel
 from services.ticket_check_service import is_ticket
 from services.ticket_channel_ordering import TicketChannelOrdering
 
 
 class Rename(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
+
+    @TaskDecorator.task("Edit Channel Name", False)
+    async def edit_channel_name(self, channel: discord.TextChannel, name: str) -> None:
+        await channel.edit(name=name[:100])
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(
@@ -52,7 +58,7 @@ class Rename(commands.Cog):
 
     @TaskDecorator.task("Rename Command", True)
     async def rename_command(self, interaction: discord.Interaction, name: str) -> None:
-        channel: discord.TextChannel = interaction.channel
+        channel = require_text_channel(interaction.channel)
         old_name: str = channel.name
 
         channel = await asyncio.wait_for(channel.edit(name=name), timeout=5.0)
@@ -72,5 +78,5 @@ class Rename(commands.Cog):
         await self.send_embed(interaction, old_name, name)
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(Rename(client))

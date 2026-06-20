@@ -15,14 +15,16 @@ import cachetools
 import discord
 import asyncio
 import os
+from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
+from core.discord_helpers import require_guild
 from core.loggers import log_tasks
 
 
 class ActiveTickets(commands.Cog):
-    def __init__(self, client: commands.Bot) -> None:
-        self.client: commands.Bot = client
+    def __init__(self, client: TicketsBot) -> None:
+        self.client: TicketsBot = client
         self.cache = cachetools.TTLCache(maxsize = ConfigManager.get('ACTIVE_TICKETS_CACHE')['ENTRIES'], ttl = 60 * ConfigManager.get('ACTIVE_TICKETS_CACHE')['MINUTES_TO_EXPIRE'])
 
     @TaskDecorator.task("Check User Messages")
@@ -48,10 +50,18 @@ class ActiveTickets(commands.Cog):
     @TaskDecorator.task("Get Tickets", True)
     async def get_tickets_list(self, interaction: discord.Interaction) -> List[Tuple[str, str]]:
         tickets: List[Tuple[str, str]] = []
+        guild = require_guild(interaction.guild)
+        if not isinstance(interaction.user, discord.Member):
+            return tickets
+        member = interaction.user
         for category_id in ConfigManager.get("TICKET_CATEGORIES"):
-            category = interaction.guild.get_channel(category_id)
-            if category:
-                tasks = [asyncio.create_task(self.check_user_messages(interaction.user.id, ticket, tickets)) for ticket in category.text_channels if ticket.permissions_for(interaction.user).read_messages]
+            category = guild.get_channel(category_id)
+            if isinstance(category, discord.CategoryChannel):
+                tasks = [
+                    asyncio.create_task(self.check_user_messages(member.id, ticket, tickets))
+                    for ticket in category.text_channels
+                    if ticket.permissions_for(member).read_messages
+                ]
                 await asyncio.gather(*tasks)
 
         return tickets
@@ -169,5 +179,5 @@ class ActiveTickets(commands.Cog):
 
 
 
-async def setup(client: commands.Bot) -> None:
+async def setup(client: TicketsBot) -> None:
     await client.add_cog(ActiveTickets(client))
