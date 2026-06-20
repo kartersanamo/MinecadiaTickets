@@ -1,0 +1,14 @@
+[tool.pyright]
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"
+stubPath = "typings"
+reportMissingModuleSource = false
+
+include = ["."]
+exclude = ["**/__pycache__", ".venv", "logs"]
+
+[[tool.pyright.executionEnvironments]]
+root = "."
+extraPaths = [".venv/lib/python3.11/site-packages"]

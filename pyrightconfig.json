@@ -3,13 +3,18 @@
   "exclude": [
     "**/__pycache__",
     ".venv",
-    "logs",
-    "pyright_full.txt"
+    "logs"
   ],
   "pythonVersion": "3.11",
   "venvPath": ".",
   "venv": ".venv",
   "stubPath": "typings",
   "typeCheckingMode": "basic",
-  "reportMissingModuleSource": false
+  "reportMissingModuleSource": false,
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [".venv/lib/python3.11/site-packages"]
+    }
+  ]
 }

@@ -7,14 +7,17 @@ It is used to display the tickets that the user is actively speaking in.
 Copyright (c) 2026 Karter Sanamo
 License: MIT
 """
+
+import asyncio
+import os
+from typing import List, Optional, Tuple
+
+import cachetools
+import discord
 from discord import app_commands
 from discord.enums import SeparatorSpacing
 from discord.ext import commands
-from typing import List, Optional, Tuple
-import cachetools
-import discord
-import asyncio
-import os
+
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
@@ -25,23 +28,32 @@ from core.loggers import log_tasks
 class ActiveTickets(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
         self.client: TicketsBot = client
-        self.cache = cachetools.TTLCache(maxsize = ConfigManager.get('ACTIVE_TICKETS_CACHE')['ENTRIES'], ttl = 60 * ConfigManager.get('ACTIVE_TICKETS_CACHE')['MINUTES_TO_EXPIRE'])
+        self.cache = cachetools.TTLCache(
+            maxsize=ConfigManager.get("ACTIVE_TICKETS_CACHE")["ENTRIES"],
+            ttl=60 * ConfigManager.get("ACTIVE_TICKETS_CACHE")["MINUTES_TO_EXPIRE"],
+        )
 
     @TaskDecorator.task("Check User Messages")
-    async def check_user_messages(self, user_id: int, channel: discord.TextChannel, tickets: list) -> None:
+    async def check_user_messages(
+        self, user_id: int, channel: discord.TextChannel, tickets: list
+    ) -> None:
         cache_key: str = f"{user_id}-{channel.id}"
         if cache_key in self.cache:
             if self.cache[cache_key]:
-                tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
+                tickets.append(
+                    (channel.mention, channel.category.name if channel.category else "Unknown")
+                )
             return
 
         try:
-            async for message in channel.history(limit = None):
+            async for message in channel.history(limit=None):
                 if message.author.id == user_id:
-                    tickets.append((channel.mention, channel.category.name if channel.category else "Unknown"))
+                    tickets.append(
+                        (channel.mention, channel.category.name if channel.category else "Unknown")
+                    )
                     self.cache[cache_key] = True
                     return
-            self.cache[cache_key] = False  
+            self.cache[cache_key] = False
 
         except Exception as error:
             log_tasks.error(f"Checking user messages error {error}")
@@ -84,13 +96,15 @@ class ActiveTickets(commands.Cog):
             blocks.append("\n".join(cur))
         return blocks
 
-    def _build_active_tickets_layout(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
+    def _build_active_tickets_layout(
+        self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]
+    ) -> Tuple[discord.ui.LayoutView, List[discord.File]]:
         accent = discord.Color.from_str(ConfigManager.get("EMBED_COLOR"))
         logo_path = ConfigManager.get("LOGO")
         logo_url = self.client.app.embeds.get_logo_url(logo_path)
         logo_files: List[discord.File] = []
 
-        view = discord.ui.LayoutView(timeout = None)
+        view = discord.ui.LayoutView(timeout=None)
         inner: list = []
 
         title_block = (
@@ -108,7 +122,7 @@ class ActiveTickets(commands.Cog):
         if logo_url:
             if logo_url.startswith("attachment://") and logo_path and os.path.isfile(logo_path):
                 fname = os.path.basename(logo_path)
-                logo_files.append(discord.File(logo_path, filename = fname))
+                logo_files.append(discord.File(logo_path, filename=fname))
                 thumb_media = f"attachment://{fname}"
                 use_section = True
             elif logo_url.startswith(("http://", "https://")):
@@ -119,32 +133,30 @@ class ActiveTickets(commands.Cog):
             inner.append(
                 discord.ui.Section(
                     discord.ui.TextDisplay(title_block),
-                    accessory = discord.ui.Thumbnail(thumb_media, description = thumb_desc),
+                    accessory=discord.ui.Thumbnail(thumb_media, description=thumb_desc),
                 )
             )
         else:
             inner.append(discord.ui.TextDisplay(title_block))
 
-        inner.append(discord.ui.Separator(visible = True, spacing = SeparatorSpacing.large))
+        inner.append(discord.ui.Separator(visible=True, spacing=SeparatorSpacing.large))
 
         if tickets:
             lines: List[str] = []
-            for mention, cat in tickets:
+            for mention, cat in tickets:  # type: ignore
                 safe_cat = cat.replace("`", "'")
                 lines.append(f"- {mention} — `{safe_cat}`")
             for block in self._chunk_line_blocks(lines, 3500):
                 inner.append(discord.ui.TextDisplay(block))
 
-        inner.append(discord.ui.Separator(visible = True, spacing = SeparatorSpacing.small))
-        inner.append(
-            discord.ui.TextDisplay(f"{ConfigManager.get('FOOTER')}")
-        )
+        inner.append(discord.ui.Separator(visible=True, spacing=SeparatorSpacing.small))
+        inner.append(discord.ui.TextDisplay(f"{ConfigManager.get('FOOTER')}"))
 
-        container = discord.ui.Container(*inner, accent_color = accent)
+        container = discord.ui.Container(*inner, accent_color=accent)
         view.add_item(container)
 
         if view.content_length() > 4000:
-            view = discord.ui.LayoutView(timeout = None)
+            view = discord.ui.LayoutView(timeout=None)
             view.add_item(
                 discord.ui.Container(
                     discord.ui.TextDisplay(
@@ -152,14 +164,16 @@ class ActiveTickets(commands.Cog):
                         "Your ticket list is too long to display here. "
                         "Please narrow your open tickets or ask staff for help."
                     ),
-                    accent_color = accent,
+                    accent_color=accent,
                 )
             )
             return view, []
         return view, logo_files
 
     @TaskDecorator.task("Send Components V2 response")
-    async def send_active_tickets_response(self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]) -> None:
+    async def send_active_tickets_response(
+        self, interaction: discord.Interaction, tickets: List[Tuple[str, str]]
+    ) -> None:
         view, logo_files = self._build_active_tickets_layout(interaction, tickets)
         edit_kw: dict = {"content": None, "embed": None, "view": view}
         if logo_files:
@@ -167,7 +181,9 @@ class ActiveTickets(commands.Cog):
         await interaction.edit_original_response(**edit_kw)
 
     @app_commands.guild_only()
-    @app_commands.command(name="active-tickets", description="Returns which tickets you are actively speaking in")
+    @app_commands.command(
+        name="active-tickets", description="Returns which tickets you are actively speaking in"
+    )
     async def activetickets(self, interaction: discord.Interaction) -> None:
         await self.activetickets_command(interaction)
 
@@ -176,7 +192,6 @@ class ActiveTickets(commands.Cog):
         await interaction.response.defer()
         tickets: List[Tuple[str, str]] = await self.get_tickets_list(interaction)
         await self.send_active_tickets_response(interaction, tickets)
-
 
 
 async def setup(client: TicketsBot) -> None:

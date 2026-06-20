@@ -13,9 +13,9 @@ except ImportError:
     mysql = None  # type: ignore
 
 try:
-    import pymysql
+    import pymysql  # type: ignore[import-not-found]
 except ImportError:
-    pymysql = None  # type: ignore
+    pymysql = None  # type: ignore[assignment,misc]
 
 _log = logging.getLogger("analytics")
 
