@@ -1,6 +1,6 @@
 import discord
 
-from core.errors.exceptions import UI_CALLBACK_ERRORS
+from core.errors.error_types import UI_CALLBACK_ERRORS
 from core.loggers import log_commands
 
 
@@ -12,6 +12,8 @@ class ManageCategoriesSelect(discord.ui.Select):
         super().__init__(placeholder="Select a ticket category to manage...", options=options)
 
     async def callback(self, interaction: discord.Interaction) -> None:
+        from ui.views.manage_tickets_view import ManageTicketsView
+
         try:
             category = self.values[0]
             await interaction.response.defer()
@@ -23,6 +25,3 @@ class ManageCategoriesSelect(discord.ui.Select):
             log_commands.error(
                 "%s (%s) has failed to select a ticket category %s", interaction.user, interaction.user.id, e
             )
-
-
-from ui.views.manage_tickets_view import ManageTicketsView

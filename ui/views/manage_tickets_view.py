@@ -13,6 +13,8 @@ class ManageTicketsView(discord.ui.View):
         super().__init__(timeout=None)
         self.ticket_info = ticket_info
         self.category = category
+        from ui.views.manage_tickets_select_view import ManageTicketsSelect
+
         self.add_item(ManageTicketsSelect(self.ticket_info, category))
         self.status_to_emoji = {"Enabled": "✅", "Disabled": "❌"}
 
@@ -41,6 +43,8 @@ class ManageTicketsView(discord.ui.View):
 
     @discord.ui.button(label="|<", style=discord.ButtonStyle.red, custom_id="go_back_category", row=0, disabled=False)
     async def go_back_category(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        from ui.views.manage_categories_view import ManageCategoriesView
+
         try:
             await interaction.response.defer()
             view = ManageCategoriesView(self.ticket_info)
@@ -84,7 +88,3 @@ class ManageTicketsView(discord.ui.View):
             log_commands.error(
                 "%s (%s) has failed to toggle %s %s", interaction.user, interaction.user.id, self.category, e
             )
-
-
-from ui.views.manage_categories_view import ManageCategoriesView
-from ui.views.manage_tickets_select_view import ManageTicketsSelect
