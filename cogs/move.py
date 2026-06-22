@@ -96,19 +96,21 @@ class Move(commands.Cog):
             )
 
     @TaskDecorator.task("Set Permissions", False)
-    async def set_permissions(self, interaction: discord.Interaction, new_category_id: int) -> None:
-        guild = require_guild(interaction.guild)
-        channel = require_text_channel(interaction.channel)
-        permissions = channel.overwrites.items()
-        while channel.category is None or channel.category.id != new_category_id:
+    async def preserve_permissions_after_move(
+        self, guild: discord.Guild, channel: discord.TextChannel, category_id: int
+    ) -> None:
+        """Keep existing channel overwrites after a category move (do not sync from category)."""
+        while channel.category is None or channel.category.id != category_id:
             await asyncio.sleep(0.5)
-        await channel.edit(sync_permissions=True)
-        for key, value in permissions:
-            if isinstance(key, (discord.Member, discord.Role)):
-                await channel.set_permissions(key, overwrite=value)
         staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team is not None:
             await channel.set_permissions(staff_team, view_channel=False)
+
+    @TaskDecorator.task("Set Permissions", False)
+    async def set_permissions(self, interaction: discord.Interaction, new_category_id: int) -> None:
+        guild = require_guild(interaction.guild)
+        channel = require_text_channel(interaction.channel)
+        await self.preserve_permissions_after_move(guild, channel, new_category_id)
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, category_name: str) -> None:

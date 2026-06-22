@@ -188,12 +188,10 @@ class DashboardHttp:
             return web.json_response({"error": "You cannot move to this category"}, status=400)
         if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             return web.json_response({"error": "That is not a ticket category"}, status=400)
-        original_overwrites = list(req.channel.overwrites.items())
         position = TicketChannelOrdering.get_ticket_position(category, req.channel)
         await req.channel.edit(category=category, position=position)
         await move_cog.update_database(category.name, req.channel.id)
-        await req.channel.edit(sync_permissions=True)
-        await self._restore_overwrites(req.channel, original_overwrites)
+        await move_cog.preserve_permissions_after_move(req.guild, req.channel, category.id)
         await req.channel.send(
             embed=self._ticket_embed(f"{req.actor.mention} has moved this ticket to **{category.name}**")
         )
