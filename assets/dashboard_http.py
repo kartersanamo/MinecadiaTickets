@@ -21,6 +21,7 @@ from core.config import ConfigManager
 from core.database import DatabasePool
 from core.errors.exceptions import DISCORD_API_ERRORS, UI_CALLBACK_ERRORS, UserFacingError
 from core.errors.messages import ErrorMessages
+from services.ticket_channel_ordering import TicketChannelOrdering
 
 log = logging.getLogger("dashboard_http")
 
@@ -188,7 +189,8 @@ class DashboardHttp:
         if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
             return web.json_response({"error": "That is not a ticket category"}, status=400)
         original_overwrites = list(req.channel.overwrites.items())
-        await req.channel.edit(category=category)
+        position = TicketChannelOrdering.get_ticket_position(category, req.channel)
+        await req.channel.edit(category=category, position=position)
         await move_cog.update_database(category.name, req.channel.id)
         await req.channel.edit(sync_permissions=True)
         await self._restore_overwrites(req.channel, original_overwrites)

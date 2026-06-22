@@ -18,7 +18,6 @@ from core.bot_client import TicketsBot
 from core.config import ConfigManager
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_text_channel
-from services.ticket_channel_ordering import TicketChannelOrdering
 from services.ticket_check_service import is_ticket
 
 
@@ -63,20 +62,7 @@ class Rename(commands.Cog):
         channel = require_text_channel(interaction.channel)
         old_name: str = channel.name
 
-        channel = await asyncio.wait_for(channel.edit(name=name), timeout=5.0)
-
-        if channel.category is not None:
-            position = await asyncio.to_thread(
-                TicketChannelOrdering.get_ticket_position,
-                channel.category,
-                channel,
-            )
-            if position != channel.position:
-                channel = await asyncio.wait_for(
-                    channel.edit(position=position),
-                    timeout=5.0,
-                )
-
+        await asyncio.wait_for(channel.edit(name=name[:100]), timeout=5.0)
         await self.send_embed(interaction, old_name, name)
 
 
