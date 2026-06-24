@@ -88,7 +88,9 @@ class Client(TicketsBot):
     @TaskDecorator.task(action_name="Update Presence")
     async def _update_presence(self) -> None:
         presence: str = ConfigManager.get(key="PRESENCE")
-        await self.change_presence(activity=discord.Game(name=presence))
+        activity = discord.Game(name=presence)
+        self._presence_activity = activity
+        await self.change_presence(activity=activity)
         log_tasks.info(msg=f"Updated the bot's presence to {presence}")
 
     @TaskDecorator.task(action_name="Remove Help")
@@ -175,6 +177,7 @@ class Client(TicketsBot):
 
     async def on_resume(self) -> None:
         mark_connected()
+        await self._update_presence()
         log_tasks.info(msg="Bot connection resumed")
 
     @TaskDecorator.task(action_name="Logging in")
