@@ -70,6 +70,7 @@ class Add(commands.Cog):
         perms = channel.overwrites_for(user)
         perms.view_channel = True
         perms.send_messages = True
+        perms.embed_links = True
         await channel.set_permissions(user, overwrite=perms)
 
     @TaskDecorator.task("Send Embed", False)
