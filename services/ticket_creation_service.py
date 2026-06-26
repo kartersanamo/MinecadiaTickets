@@ -251,7 +251,7 @@ class TicketCreationService:
             discord.PermissionOverwrite,
         ] = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            user: discord.PermissionOverwrite(view_channel=True, send_messages=False),
+            user: discord.PermissionOverwrite(view_channel=True, send_messages=False, embed_links=True),
             staff: discord.PermissionOverwrite(view_channel=False),
         }
         for role_id in ticket_info["Roles"]:
