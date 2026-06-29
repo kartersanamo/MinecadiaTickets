@@ -14,9 +14,11 @@ from discord.ext import commands
 
 from core.bot_client import TicketsBot
 from core.config import ConfigManager
+from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
+from services.ticket_access_service import TicketAccessService
 from services.ticket_check_service import is_ticket
 
 
@@ -104,8 +106,33 @@ class Remove(commands.Cog):
     async def remove(self, interaction: discord.Interaction, user: discord.Member) -> None:
         await self.remove_command(interaction, user)
 
+    @TaskDecorator.task("Check Protected User", False)
+    async def check_protected_user(self, interaction: discord.Interaction, user: discord.Member) -> bool:
+        channel = require_text_channel(interaction.channel)
+        rows = DatabasePool.execute("SELECT owner_id FROM tickets WHERE channel_id = %s LIMIT 1", (channel.id,))
+        if rows and int(rows[0]["owner_id"]) == user.id:
+            await interaction.response.send_message(
+                content="`❌` Failed! You cannot remove the ticket owner from their ticket.",
+                ephemeral=True,
+            )
+            return True
+
+        draft_category_id = TicketAccessService.draft_map_category_id()
+        if channel.category and channel.category.id == draft_category_id:
+            protected_user_ids = set(TicketAccessService.draft_map_user_ids())
+            if user.id in protected_user_ids:
+                await interaction.response.send_message(
+                    content="`❌` Failed! You cannot remove a configured Draft Map viewer from this ticket.",
+                    ephemeral=True,
+                )
+                return True
+        return False
+
     @TaskDecorator.task("Remove Command", True)
     async def remove_command(self, interaction: discord.Interaction, user: discord.Member) -> None:
+        protected_user: bool = await self.check_protected_user(interaction, user)
+        if protected_user:
+            return
         removing_higher: bool = await self.check_higher_rank(interaction, user)
         if not removing_higher:
             channel = require_text_channel(interaction.channel)

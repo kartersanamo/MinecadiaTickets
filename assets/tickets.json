@@ -1065,6 +1065,38 @@
             }
          ]
       },
+      "Draft Map": {
+         "Status": "Enabled",
+         "Ticket Logs": 1224411490090750043,
+         "Emoji": "<:tnt:1033280789116362773>",
+         "Description": "Any support tickets relating to the draft map",
+         "Category": 1521020527739932873,
+         "Message": "",
+         "Roles": [],
+         "Users": [
+            246017400393302016,
+            216705614783447041,
+            399760511706726400,
+            542834884683497472,
+            837793755838939157,
+            198263506313805824
+         ],
+         "Pings": [
+            966405865601138738
+         ],
+         "Questions": [
+            {
+               "Label": "What do you need help with?",
+               "Placeholder": "Describe the draft map issue/request in detail...",
+               "Length": "Long"
+            },
+            {
+               "Label": "Links to videos or images (if applicable)",
+               "Placeholder": "https://...",
+               "Length": "Short"
+            }
+         ]
+      },
       "Miscellaneous": {
          "Status": "Enabled",
          "Ticket Logs": 944653873216376863,

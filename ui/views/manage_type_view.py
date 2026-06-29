@@ -6,6 +6,7 @@ import discord
 from core.config import ConfigManager
 from core.errors.exceptions import UI_CALLBACK_ERRORS
 from core.loggers import log_commands
+from services.ticket_access_service import TicketAccessService
 from ui.views.manage_tickets_support import ManageTicketsSupport
 
 
@@ -66,6 +67,17 @@ class ManageTypeView(discord.ui.View):
                 ),
                 "Image": None,
             },
+            "Users": {
+                "Description": (
+                    "*These are the user IDs that can view the ticket channel when it is opened. Use this instead of "
+                    "roles for tickets that should only be visible to specific people. By default,* `@everyone` "
+                    "*cannot view it,* `@Staff Team` *cannot view it, and only the ticket opener plus these users "
+                    "can view it.\n \n"
+                    "`SEND THE USER IDs OF EACH USER SEPERATED BY A SPACE. "
+                    "ONE WRONG SPACE/CHARACTER AND IT WON'T WORK.`"
+                ),
+                "Image": None,
+            },
             "Category": {
                 "Description": (
                     "*This is the category that the ticket will be placed under when it is opened. Permissions for all "
@@ -102,10 +114,14 @@ class ManageTypeView(discord.ui.View):
                 for role_id in ticket_info.get("Roles", [])
                 if (role := guild.get_role(role_id)) is not None
             ]
+            user_ids = TicketAccessService.resolve_user_ids(self.ticket, ticket_info)
+            users = [f"<@{user_id}> ({user_id})" for user_id in user_ids]
             if not pings:
                 pings = ["None"]
             if not roles:
                 roles = ["None"]
+            if not users:
+                users = ["None"]
             if len(ticket_info.get("Message")) > 1000:
                 message = (
                     f"```{ticket_info.get('Message')[:1000]}\n...```" if ticket_info.get("Message", None) else "None"
@@ -123,6 +139,7 @@ class ManageTypeView(discord.ui.View):
             manage_type_embed.add_field(name="Category", value=category_string)
             manage_type_embed.add_field(name="Pings", value="".join(pings))
             manage_type_embed.add_field(name="Roles", value="".join(roles))
+            manage_type_embed.add_field(name="Users", value="".join(users))
             manage_type_embed.add_field(name="Message", value=message)
             questions_embed = discord.Embed(
                 title="Manage Ticket Questions",
@@ -178,6 +195,14 @@ class ManageTypeView(discord.ui.View):
                                 return False
                         except (ValueError, TypeError):
                             return False
+                if value == "Users":
+                    for user_id in m.content.split(" "):
+                        if not user_id:
+                            continue
+                        try:
+                            int(user_id)
+                        except (ValueError, TypeError):
+                            return False
                 if value == "Category":
                     try:
                         if guild.get_channel(int(m.content)) is None:
@@ -200,6 +225,10 @@ class ManageTypeView(discord.ui.View):
                 elif value in ["Roles", "Pings"]:
                     info[self.ticket_category][self.ticket][value] = [
                         int(role) for role in new_value.content.split(" ")
+                    ]
+                elif value == "Users":
+                    info[self.ticket_category][self.ticket][value] = [
+                        int(user_id) for user_id in new_value.content.split(" ") if user_id
                     ]
                 elif value == "Category":
                     info[self.ticket_category][self.ticket][value] = int(new_value.content)
@@ -318,6 +347,12 @@ class ManageTypeView(discord.ui.View):
     )
     async def change_pings(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.change_value(interaction, "Pings")
+
+    @discord.ui.button(
+        label="Change Users", style=discord.ButtonStyle.grey, custom_id="change_users", row=2, disabled=False
+    )
+    async def change_users(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        await self.change_value(interaction, "Users")
 
 
 from ui.views.manage_questions_select_view import ManageQuestionsSelect

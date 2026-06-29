@@ -10,6 +10,7 @@ from core.errors.exceptions import UI_CALLBACK_ERRORS
 from core.loggers import log_tasks
 from services.embed_service import EmbedService
 from services.dashboard_notify import notify_dashboard_new_ticket
+from services.ticket_access_service import TicketAccessService
 
 
 class Questions(discord.ui.Modal):
@@ -102,7 +103,16 @@ class Questions(discord.ui.Modal):
             ):
                 return
 
-            roles = [role.mention for ping in self.ticket_info["Pings"] if (role := guild.get_role(ping)) is not None]
+            ticket_type_name = (
+                self.ticket_type.split(" (", 1)[-1].rstrip(")")
+                if " (" in self.ticket_type
+                else self.ticket_type
+            )
+            roles = await TicketAccessService.mention_strings_for_ticket_open(
+                guild,
+                ticket_type_name,
+                self.ticket_info,
+            )
             tags = await channel.send(" ".join(roles))
             embed = message.embeds[0]
             if embed.description is None:

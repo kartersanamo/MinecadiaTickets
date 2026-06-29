@@ -24,6 +24,7 @@ from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild
 from core.errors.exceptions import CHANNEL_HISTORY_ERRORS
 from core.loggers import log_tasks
+from services.ticket_access_service import TicketAccessService
 
 
 class ActiveTickets(commands.Cog):
@@ -61,7 +62,7 @@ class ActiveTickets(commands.Cog):
         if not isinstance(interaction.user, discord.Member):
             return tickets
         member = interaction.user
-        for category_id in ConfigManager.get("TICKET_CATEGORIES"):
+        for category_id in TicketAccessService.ticket_category_ids():
             category = guild.get_channel(category_id)
             if isinstance(category, discord.CategoryChannel):
                 tasks = [

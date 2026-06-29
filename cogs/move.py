@@ -20,6 +20,7 @@ from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
+from services.ticket_access_service import TicketAccessService
 from services.ticket_channel_ordering import TicketChannelOrdering
 from services.ticket_check_service import is_ticket
 
@@ -36,7 +37,9 @@ class Move(commands.Cog):
     async def check_blacklisted_category(
         self, interaction: discord.Interaction, category: discord.CategoryChannel
     ) -> bool:
-        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES"):
+        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES") or category.id == (
+            TicketAccessService.draft_map_category_id()
+        ):
             log_commands.warning(
                 "%s (%s) tried to move a ticket to a blacklisted category %s (%s)",
                 interaction.user,
@@ -52,7 +55,7 @@ class Move(commands.Cog):
 
     @TaskDecorator.task("Check Category", False)
     async def check_ticket_category(self, interaction: discord.Interaction, category: discord.CategoryChannel) -> bool:
-        if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
+        if category.id not in TicketAccessService.ticket_category_ids():
             log_commands.warning(
                 "%s (%s) tried to move a ticket to a non-ticket category %s (%s)",
                 interaction.user,

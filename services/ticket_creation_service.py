@@ -9,6 +9,7 @@ from core.decorators import TaskDecorator
 from core.loggers import log_tasks
 from services.active_ticket_cache import active_ticket_cache
 from services.embed_service import EmbedService
+from services.ticket_access_service import TicketAccessService
 from ui.views.info_button import InfoButton
 
 LOGO = "assets/Logo.png"
@@ -233,31 +234,33 @@ class TicketCreationService:
         ticket_info = category_tickets.get(ticket_type_name)
         if ticket_info is None:
             return None
+        access_error = TicketAccessService.validate_ticket_access_config(ticket_type_name, ticket_info)
+        if access_error:
+            embed = discord.Embed(
+                description=access_error,
+                color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
+            )
+            await interaction.edit_original_response(embed=embed)
+            return None
         ticket_type = f"{custom_id} ({ticket_type_name})"
         guild = interaction.guild
         if guild is None:
             return None
-        category = guild.get_channel(ticket_info["Category"])
+        category = guild.get_channel(TicketAccessService.resolve_category_id(ticket_type_name, ticket_info))
         if not isinstance(category, discord.CategoryChannel):
-            return None
-        staff = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
-        if staff is None:
             return None
         user = interaction.user
         if not isinstance(user, discord.Member):
             return None
-        overwrites: dict[
-            discord.Role | discord.Member | discord.Object,
-            discord.PermissionOverwrite,
-        ] = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            user: discord.PermissionOverwrite(view_channel=True, send_messages=False, embed_links=True),
-            staff: discord.PermissionOverwrite(view_channel=False),
-        }
-        for role_id in ticket_info["Roles"]:
-            role_obj = guild.get_role(role_id)
-            if role_obj is not None:
-                overwrites[role_obj] = discord.PermissionOverwrite(view_channel=True)
+        try:
+            overwrites = await TicketAccessService.build_channel_overwrites(
+                guild,
+                ticket_type_name,
+                ticket_info,
+                user,
+            )
+        except ValueError:
+            return None
         number = await self.get_number()
         channel = await guild.create_text_channel(
             name=f"{user.name}-ticket-{number}",
@@ -282,7 +285,11 @@ class TicketCreationService:
             f"**Type:** {ticket_type}\n"
             "\n"
         )
-        description += ticket_info["Message"] + "\n \n**One of our staff members will be with you shortly.**"
+        description += ticket_info["Message"]
+        if TicketAccessService.uses_user_only_access(ticket_type_name, ticket_info):
+            description += "\n \n**Your request has been submitted. The assigned team will review it shortly.**"
+        else:
+            description += "\n \n**One of our staff members will be with you shortly.**"
         embed = discord.Embed(
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
             description=description,
@@ -295,10 +302,17 @@ class TicketCreationService:
             file=discord.File("assets/Logo.png"),
         )
         privated = ""
-        if any(substring in ticket_type for substring in ["Store Support", "Discord Issues", "Connection Issues"]):
+        if any(
+            substring in ticket_type
+            for substring in ["Store Support", "Discord Issues", "Connection Issues", "Draft Map"]
+        ):
             privated = "Admin"
-        elif "Management Contact" in ticket_type:
+        elif any(
+            substring in ticket_type
+            for substring in ["Management Contact"]
+        ):
             privated = "Management"
+
         DatabasePool.execute(
             "INSERT INTO tickets (channel_id, owner_id, type, opened_at, number, is_active, "
             "closed_by_id, closed_at, reason, name, transcript, privated) "

@@ -1,13 +1,13 @@
 import discord
 from discord import app_commands
 
-from core.config import ConfigManager
+from services.ticket_access_service import TicketAccessService
 
 
 class TicketCheckService:
     @staticmethod
     def is_ticket_category(category_id: int | None) -> bool:
-        return category_id is not None and category_id in ConfigManager.get("TICKET_CATEGORIES")
+        return TicketAccessService.is_ticket_category(category_id)
 
     @staticmethod
     def ticket_only():
@@ -22,7 +22,7 @@ class TicketCheckService:
                     if interaction.channel is not None
                     and isinstance(interaction.channel, discord.TextChannel)
                     and interaction.channel.category is not None
-                    else None not in ConfigManager.get("TICKET_CATEGORIES")
+                    else None not in TicketAccessService.ticket_category_ids()
                 )
             ):
                 raise app_commands.CheckFailure("`❌` Failed! This command can only be ran inside of a ticket.")

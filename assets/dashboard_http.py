@@ -21,6 +21,7 @@ from core.config import ConfigManager
 from core.database import DatabasePool
 from core.errors.exceptions import DISCORD_API_ERRORS, UI_CALLBACK_ERRORS, UserFacingError
 from core.errors.messages import ErrorMessages
+from services.ticket_access_service import TicketAccessService
 from services.ticket_channel_ordering import TicketChannelOrdering
 
 log = logging.getLogger("dashboard_http")
@@ -81,7 +82,7 @@ class DashboardHttp:
         return None
 
     def _is_ticket_channel(self, channel: discord.TextChannel) -> bool:
-        return channel.category is not None and channel.category.id in ConfigManager.get("TICKET_CATEGORIES")
+        return TicketAccessService.is_ticket_category(channel.category.id if channel.category else None)
 
     async def _restore_overwrites(
         self,
@@ -184,9 +185,10 @@ class DashboardHttp:
         category = self._resolve_move_category(req.guild, target)
         if category is None:
             return web.json_response({"error": "Target category not found"}, status=404)
-        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES"):
+        draft_category_id = TicketAccessService.draft_map_category_id()
+        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES") or category.id == draft_category_id:
             return web.json_response({"error": "You cannot move to this category"}, status=400)
-        if category.id not in ConfigManager.get("TICKET_CATEGORIES"):
+        if category.id not in TicketAccessService.ticket_category_ids():
             return web.json_response({"error": "That is not a ticket category"}, status=400)
         permissions = list(req.channel.overwrites.items())
         position = TicketChannelOrdering.get_ticket_position(category, req.channel)
