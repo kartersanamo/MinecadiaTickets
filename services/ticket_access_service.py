@@ -89,6 +89,45 @@ class TicketAccessService:
         return members
 
     @classmethod
+    async def grant_user_channel_access(
+        cls,
+        channel: discord.TextChannel,
+        user: discord.Member | discord.User,
+        *,
+        send_messages: bool = True,
+    ) -> None:
+        """Grant explicit channel access. Do not use overwrites_for() — inherit stays neutral."""
+        await channel.set_permissions(
+            user,
+            overwrite=discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=send_messages,
+                embed_links=True,
+            ),
+        )
+
+    @classmethod
+    async def grant_users_channel_access(
+        cls,
+        channel: discord.TextChannel,
+        guild: discord.Guild,
+        user_ids: list[int],
+    ) -> list[discord.Member]:
+        members = await cls.fetch_members(guild, user_ids)
+        for member in members:
+            await cls.grant_user_channel_access(channel, member)
+        return members
+
+    @classmethod
+    async def grant_draft_map_configured_viewers(
+        cls,
+        channel: discord.TextChannel,
+        guild: discord.Guild,
+    ) -> list[discord.Member]:
+        """Grant access to every user listed under Draft Map → Users in tickets.json."""
+        return await cls.grant_users_channel_access(channel, guild, cls.draft_map_user_ids())
+
+    @classmethod
     async def build_channel_overwrites(
         cls,
         guild: discord.Guild,

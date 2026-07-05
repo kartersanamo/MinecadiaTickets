@@ -1,7 +1,7 @@
 """
 draft.py
 
-Moves a ticket to the Draft Map category and grants access to draft leaders.
+Moves a ticket to the Draft Map category, grants tickets.json viewers, then draft leaders.
 
 Copyright (c) 2026 Karter Sanamo
 License: MIT
@@ -29,16 +29,19 @@ class Draft(commands.Cog):
     def __init__(self, client: TicketsBot) -> None:
         self.client: TicketsBot = client
 
-    @TaskDecorator.task("Add Draft Leaders", False)
-    async def add_draft_leaders(self, channel: discord.TextChannel, guild: discord.Guild) -> list[discord.Member]:
-        members = await TicketAccessService.fetch_members(guild, self.DRAFT_LEADER_IDS)
-        for member in members:
-            perms = channel.overwrites_for(member)
-            perms.view_channel = True
-            perms.send_messages = True
-            perms.embed_links = True
-            await channel.set_permissions(member, overwrite=perms)
-        return members
+    @TaskDecorator.task("Grant Configured Draft Viewers", False)
+    async def grant_configured_draft_viewers(
+        self, channel: discord.TextChannel, guild: discord.Guild
+    ) -> list[discord.Member]:
+        return await TicketAccessService.grant_draft_map_configured_viewers(channel, guild)
+
+    @TaskDecorator.task("Grant Draft Leaders", False)
+    async def grant_draft_leaders(
+        self, channel: discord.TextChannel, guild: discord.Guild
+    ) -> list[discord.Member]:
+        return await TicketAccessService.grant_users_channel_access(
+            channel, guild, self.DRAFT_LEADER_IDS
+        )
 
     @TaskDecorator.task("Apply Permissions After Move", False)
     async def apply_permissions_after_move(
@@ -52,10 +55,12 @@ class Draft(commands.Cog):
             await asyncio.sleep(0.5)
         await channel.edit(sync_permissions=True)
         for key, value in permissions:
-            if isinstance(key, discord.Member):
+            if isinstance(key, discord.Role):
                 await channel.set_permissions(key, overwrite=value)
-            elif key == guild.default_role:
-                await channel.set_permissions(guild.default_role, overwrite=value)
+            elif isinstance(key, (discord.Member, discord.User)):
+                await channel.set_permissions(key, overwrite=value)
+            elif isinstance(key, discord.Object):
+                await channel.set_permissions(key, overwrite=value)
         staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team is not None:
             await channel.set_permissions(staff_team, view_channel=False)
@@ -71,7 +76,7 @@ class Draft(commands.Cog):
     @app_commands.guild_only()
     @app_commands.command(
         name="draft",
-        description="Moves the ticket to Draft Map and adds draft leaders",
+        description="Moves the ticket to Draft Map, adds configured viewers, then draft leaders",
     )
     async def draft(self, interaction: discord.Interaction) -> None:
         await self.draft_command(interaction)
@@ -103,13 +108,14 @@ class Draft(commands.Cog):
         await channel.edit(category=category, position=position, sync_permissions=False)
         await self.update_database(category.name, channel.id)
         await self.apply_permissions_after_move(guild, channel, category.id, permissions)
-        leaders = await self.add_draft_leaders(channel, guild)
 
-        leader_mentions = ", ".join(member.mention for member in leaders) or "configured draft leaders"
+        await self.grant_configured_draft_viewers(channel, guild)
+        leaders = await self.grant_draft_leaders(channel, guild)
+
         embed = discord.Embed(
             description=(
                 f"{interaction.user.mention} has moved this ticket to **Draft Map**\n"
-                f"-# Draft leaders added: {leader_mentions}"
+                f"-# {len(leaders)} Draft leaders added"
             ),
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )

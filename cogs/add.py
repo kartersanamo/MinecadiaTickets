@@ -67,11 +67,9 @@ class Add(commands.Cog):
 
     @TaskDecorator.task("Set Permissions", False)
     async def set_permissions(self, channel: discord.TextChannel, user: discord.Member) -> None:
-        perms = channel.overwrites_for(user)
-        perms.view_channel = True
-        perms.send_messages = True
-        perms.embed_links = True
-        await channel.set_permissions(user, overwrite=perms)
+        from services.ticket_access_service import TicketAccessService
+
+        await TicketAccessService.grant_user_channel_access(channel, user)
 
     @TaskDecorator.task("Send Embed", False)
     async def send_embed(self, interaction: discord.Interaction, user: discord.Member) -> None:
