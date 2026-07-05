@@ -8,8 +8,9 @@ from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.errors.exceptions import UI_CALLBACK_ERRORS
 from core.loggers import log_tasks
-from services.embed_service import EmbedService
 from services.dashboard_notify import notify_dashboard_new_ticket
+from services.embed_service import EmbedService
+from services.evidence_link_service import resend_evidence_links
 from services.ticket_access_service import TicketAccessService
 
 
@@ -146,6 +147,12 @@ class Questions(discord.ui.Modal):
             perms.send_messages = perms.view_channel = True
             await channel.set_permissions(user, overwrite=perms)
             await tags.delete()
+
+            for heading, item in zip(self._modal_field_headings, self.children):
+                if not isinstance(item, discord.ui.TextInput):
+                    continue
+                await resend_evidence_links(channel, heading, item.value or "")
+
             log_tasks.info(
                 "%s (%s) updated the embed with question answers in #%s (%s)",
                 interaction.user,
