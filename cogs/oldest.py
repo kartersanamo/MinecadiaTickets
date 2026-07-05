@@ -18,8 +18,7 @@ from core.bot_client import TicketsBot
 from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild
-from core.loggers import log_tasks
-from services.active_ticket_cache import active_ticket_cache
+from services.stale_ticket_service import StaleTicketService
 from ui.views.paginator import Paginator
 
 
@@ -32,8 +31,8 @@ class Oldest(commands.Cog):
         self, interaction: discord.Interaction, category: Optional[discord.CategoryChannel] = None
     ) -> list[str]:
         data: list = []
-        bad_channels: list = []
         guild = require_guild(interaction.guild)
+        StaleTicketService.clear_stale_tickets(guild)
         rows = DatabasePool.execute("SELECT channel_id, opened_at FROM tickets WHERE is_active = 1 ORDER BY opened_at")
         for row in rows:
             channel = guild.get_channel(int(row["channel_id"]))
@@ -42,22 +41,6 @@ class Oldest(commands.Cog):
                     data.append(f"{channel.mention} <t:{(int(float(row['opened_at'])))}:R>")
                 else:
                     data.append(f"{channel.mention} <t:{(int(float(row['opened_at'])))}:R>")
-            else:
-                bad_channels.append(row["channel_id"])
-
-        if bad_channels:
-            placeholders = ", ".join(["%s"] * len(bad_channels))
-            DatabasePool.execute(
-                f"UPDATE tickets SET is_active = 0 WHERE channel_id IN ({placeholders})",
-                tuple(bad_channels),
-            )
-            for channel_id in bad_channels:
-                active_ticket_cache.unregister(int(channel_id))
-            log_tasks.warning(
-                "%s invalid channel IDs found and removed from the database %s",
-                len(bad_channels),
-                bad_channels,
-            )
 
         if not data:
             data = ["No data found."]
