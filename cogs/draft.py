@@ -43,27 +43,22 @@ class Draft(commands.Cog):
             channel, guild, self.DRAFT_LEADER_IDS
         )
 
-    @TaskDecorator.task("Apply Permissions After Move", False)
-    async def apply_permissions_after_move(
-        self,
-        guild: discord.Guild,
-        channel: discord.TextChannel,
-        category_id: int,
-        permissions: list[tuple[discord.Role | discord.Member | discord.Object, discord.PermissionOverwrite]],
+    @TaskDecorator.task("Wait For Category Move", False)
+    async def wait_for_category_move(
+        self, channel: discord.TextChannel, category_id: int
     ) -> None:
         while channel.category is None or channel.category.id != category_id:
             await asyncio.sleep(0.5)
-        await channel.edit(sync_permissions=True)
-        for key, value in permissions:
-            if isinstance(key, discord.Role):
-                await channel.set_permissions(key, overwrite=value)
-            elif isinstance(key, (discord.Member, discord.User)):
-                await channel.set_permissions(key, overwrite=value)
-            elif isinstance(key, discord.Object):
-                await channel.set_permissions(key, overwrite=value)
-        staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
-        if staff_team is not None:
-            await channel.set_permissions(staff_team, view_channel=False)
+
+    @TaskDecorator.task("Get Ticket Owner", False)
+    async def get_ticket_owner_id(self, channel_id: int) -> int | None:
+        rows = DatabasePool.execute(
+            "SELECT owner_id FROM tickets WHERE channel_id = %s LIMIT 1",
+            (channel_id,),
+        )
+        if not rows:
+            return None
+        return int(rows[0]["owner_id"])
 
     @TaskDecorator.task("Update Database", False)
     async def update_database(self, category_name: str, channel_id: int) -> None:
@@ -103,19 +98,26 @@ class Draft(commands.Cog):
 
         await interaction.response.defer()
 
-        permissions = list(channel.overwrites.items())
+        owner_id = await self.get_ticket_owner_id(channel.id)
+        if owner_id is None:
+            await interaction.edit_original_response(
+                content="`❌` Could not find ticket owner in the database.",
+            )
+            return
+
         position = TicketChannelOrdering.get_ticket_position(category, channel)
         await channel.edit(category=category, position=position, sync_permissions=False)
         await self.update_database(category.name, channel.id)
-        await self.apply_permissions_after_move(guild, channel, category.id, permissions)
+        await self.wait_for_category_move(channel, category.id)
 
+        await TicketAccessService.reset_draft_ticket_permissions(channel, guild, owner_id)
         await self.grant_configured_draft_viewers(channel, guild)
         leaders = await self.grant_draft_leaders(channel, guild)
 
         embed = discord.Embed(
             description=(
                 f"{interaction.user.mention} has moved this ticket to **Draft Map**\n"
-                f"-# {len(leaders)} Draft leaders added"
+                f"-# Added {len(leaders)} draft leaders"
             ),
             color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")),
         )
