@@ -46,7 +46,9 @@ COG_FILES: list[str] = [
 
 class Client(TicketsBot):
     def __init__(self) -> None:
-        super().__init__(command_prefix=".", intents=discord.Intents().all())
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(command_prefix=".", intents=intents)
         ErrorSetup.wire_bot(bot=self, bot_name="Tickets", log_commands=log_commands, log_tasks=log_tasks)
         self.app: BotApp  # initialized in setup_hook
         log_tasks.info(msg="Initialized the bot client")
