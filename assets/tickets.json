@@ -1065,29 +1065,26 @@
             }
          ]
       },
-      "Draft Map": {
+      "Strike Team": {
          "Status": "Enabled",
-         "Ticket Logs": 1224411490090750043,
+         "Ticket Logs": 1190693196716576878,
          "Emoji": "<:tnt:1033280789116362773>",
-         "Description": "Any support tickets relating to the draft map",
+         "Description": "Strike reports/strike appeals, etc.",
          "Category": 1521020527739932873,
          "Message": "",
-         "Roles": [],
+         "Roles": [
+            958680515806904361,
+            966405865601138738
+         ],
          "Users": [
-            246017400393302016,
-            216705614783447041,
-            399760511706726400,
-            542834884683497472,
-            837793755838939157,
-            198263506313805824
          ],
          "Pings": [
-            966405865601138738
+            918899938660868117
          ],
          "Questions": [
             {
                "Label": "What do you need help with?",
-               "Placeholder": "Describe the draft map issue/request in detail...",
+               "Placeholder": "Describe the strike team issue/report in detail...",
                "Length": "Long"
             },
             {
