@@ -109,9 +109,19 @@ class Move(commands.Cog):
         await channel.edit(sync_permissions=True)
         for key, value in permissions:
             if isinstance(key, discord.Member):
-                await channel.set_permissions(key, overwrite=value)
-            elif key == guild.default_role:
-                await channel.set_permissions(guild.default_role, overwrite=value)
+                target = key
+            elif isinstance(key, discord.Role) and key.id == guild.default_role.id:
+                target = key
+            elif isinstance(key, discord.Object) and guild.get_role(key.id) is None:
+                target = guild.get_member(key.id)
+                if target is None:
+                    try:
+                        target = await guild.fetch_member(key.id)
+                    except discord.HTTPException:
+                        continue
+            else:
+                continue
+            await channel.set_permissions(target, overwrite=value)
         staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team is not None:
             await channel.set_permissions(staff_team, view_channel=False)
@@ -151,7 +161,15 @@ class Move(commands.Cog):
             await self.defer_response(interaction)
             guild = require_guild(interaction.guild)
             channel = require_text_channel(interaction.channel)
-            permissions = list(channel.overwrites.items())
+            permissions: list[
+                tuple[discord.Role | discord.Member | discord.Object, discord.PermissionOverwrite]
+            ] = [
+                (key, value)
+                for key, value in channel.overwrites.items()
+                if isinstance(key, discord.Member)
+                or isinstance(key, discord.Role) and key.id == guild.default_role.id
+                or isinstance(key, discord.Object) and guild.get_role(key.id) is None
+            ]
             await self.move_categories(interaction, category)
             await self.update_database(category.name, channel.id)
             await self.set_permissions(guild, channel, category.id, permissions)
