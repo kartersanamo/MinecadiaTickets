@@ -37,9 +37,7 @@ class Move(commands.Cog):
     async def check_blacklisted_category(
         self, interaction: discord.Interaction, category: discord.CategoryChannel
     ) -> bool:
-        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES") or category.id == (
-            TicketAccessService.draft_map_category_id()
-        ):
+        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES"):
             log_commands.warning(
                 "%s (%s) tried to move a ticket to a blacklisted category %s (%s)",
                 interaction.user,

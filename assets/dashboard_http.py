@@ -185,8 +185,7 @@ class DashboardHttp:
         category = self._resolve_move_category(req.guild, target)
         if category is None:
             return web.json_response({"error": "Target category not found"}, status=404)
-        draft_category_id = TicketAccessService.draft_map_category_id()
-        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES") or category.id == draft_category_id:
+        if category.id in ConfigManager.get("BLACKLISTED_MOVE_CATEGORIES"):
             return web.json_response({"error": "You cannot move to this category"}, status=400)
         if category.id not in TicketAccessService.ticket_category_ids():
             return web.json_response({"error": "That is not a ticket category"}, status=400)

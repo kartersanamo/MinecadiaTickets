@@ -7,21 +7,6 @@ from core.loggers import log_tasks
 
 
 class TicketAccessService:
-    DRAFT_MAP_TICKET_TYPE = "Draft Map"
-
-    @classmethod
-    def draft_map_ticket_info(cls) -> dict:
-        ticket_info = ConfigManager.tickets().get("Miscellaneous", {}).get(cls.DRAFT_MAP_TICKET_TYPE, {})
-        return ticket_info if isinstance(ticket_info, dict) else {}
-
-    @classmethod
-    def draft_map_category_id(cls) -> int:
-        return int(cls.draft_map_ticket_info().get("Category", 0) or 0)
-
-    @classmethod
-    def draft_map_user_ids(cls) -> list[int]:
-        return cls._valid_ids(cls.draft_map_ticket_info().get("Users", []))
-
     @classmethod
     def _ticket_type_category_ids(cls) -> list[int]:
         category_ids: list[int] = []
@@ -119,59 +104,6 @@ class TicketAccessService:
         return members
 
     @classmethod
-    async def grant_draft_map_configured_viewers(
-        cls,
-        channel: discord.TextChannel,
-        guild: discord.Guild,
-    ) -> list[discord.Member]:
-        """Grant access to every user listed under Draft Map → Users in tickets.json."""
-        return await cls.grant_users_channel_access(channel, guild, cls.draft_map_user_ids())
-
-    @classmethod
-    async def _resolve_member(cls, guild: discord.Guild, user_id: int) -> discord.Member | None:
-        member = guild.get_member(user_id)
-        if member is not None:
-            return member
-        try:
-            return await guild.fetch_member(user_id)
-        except discord.HTTPException:
-            log_tasks.warning("Could not resolve guild member %s for ticket access", user_id)
-            return None
-
-    @classmethod
-    async def reset_draft_ticket_permissions(
-        cls,
-        channel: discord.TextChannel,
-        guild: discord.Guild,
-        owner_id: int,
-    ) -> None:
-        """
-        Replace channel overwrites with only what draft tickets need.
-        Does not sync category permissions (avoids pulling in factions roles).
-        """
-        staff = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
-        if staff is None:
-            raise ValueError("Staff team role was not found")
-
-        overwrites: dict[
-            discord.Role | discord.Member,
-            discord.PermissionOverwrite,
-        ] = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            staff: discord.PermissionOverwrite(view_channel=False),
-        }
-
-        owner = await cls._resolve_member(guild, owner_id)
-        if owner is not None:
-            overwrites[owner] = discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                embed_links=True,
-            )
-
-        await channel.edit(overwrites=overwrites)
-
-    @classmethod
     async def build_channel_overwrites(
         cls,
         guild: discord.Guild,
@@ -230,21 +162,11 @@ class TicketAccessService:
     def validate_ticket_access_config(cls, ticket_type_name: str, ticket_info: dict) -> str | None:
         category_id = cls.resolve_category_id(ticket_type_name, ticket_info)
         if not category_id:
-            if ticket_type_name == cls.DRAFT_MAP_TICKET_TYPE:
-                return (
-                    "`❌` Draft Map tickets are not configured yet. "
-                    "Set `Category` for Draft Map in `assets/tickets.json`."
-                )
             return "`❌` This ticket type does not have a valid category configured."
 
         if cls.uses_user_only_access(ticket_type_name, ticket_info):
             user_ids = cls.resolve_user_ids(ticket_type_name, ticket_info)
             if not user_ids:
-                if ticket_type_name == cls.DRAFT_MAP_TICKET_TYPE:
-                    return (
-                        "`❌` Draft Map tickets are not configured yet. "
-                        "Set `Users` for Draft Map in `assets/tickets.json`."
-                    )
                 return "`❌` This ticket type does not have any viewers configured."
 
         return None

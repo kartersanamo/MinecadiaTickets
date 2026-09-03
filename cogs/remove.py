@@ -18,7 +18,6 @@ from core.database import DatabasePool
 from core.decorators import TaskDecorator
 from core.discord_helpers import require_guild, require_text_channel
 from core.loggers import log_commands
-from services.ticket_access_service import TicketAccessService
 from services.ticket_check_service import is_ticket
 
 
@@ -117,15 +116,6 @@ class Remove(commands.Cog):
             )
             return True
 
-        draft_category_id = TicketAccessService.draft_map_category_id()
-        if channel.category and channel.category.id == draft_category_id:
-            protected_user_ids = set(TicketAccessService.draft_map_user_ids())
-            if user.id in protected_user_ids:
-                await interaction.response.send_message(
-                    content="`❌` Failed! You cannot remove a configured Draft Map viewer from this ticket.",
-                    ephemeral=True,
-                )
-                return True
         return False
 
     @TaskDecorator.task("Remove Command", True)

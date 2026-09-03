@@ -304,7 +304,7 @@ class TicketCreationService:
         privated = ""
         if any(
             substring in ticket_type
-            for substring in ["Store Support", "Discord Issues", "Connection Issues", "Draft Map"]
+            for substring in ["Store Support", "Discord Issues", "Connection Issues"]
         ):
             privated = "Admin"
         elif any(
