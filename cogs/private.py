@@ -35,7 +35,7 @@ class Private(commands.Cog):
 
     @TaskDecorator.task("Change Category", False)
     async def change_category(self, channel: discord.TextChannel, category: discord.CategoryChannel) -> None:
-        await channel.edit(category=category)
+        await channel.edit(category=category, sync_permissions=False)
 
     @TaskDecorator.task("Update Database", False)
     async def update_database(self, channel_id: int, privated_str: str) -> None:
@@ -50,8 +50,20 @@ class Private(commands.Cog):
     ) -> None:
         await channel.edit(sync_permissions=True)
         for key, value in permissions:
-            if isinstance(key, discord.Member) or key == default_role:
-                await channel.set_permissions(key, overwrite=value)
+            if isinstance(key, discord.Member):
+                target = key
+            elif isinstance(key, discord.Role) and key.id == default_role.id:
+                target = key
+            elif isinstance(key, discord.Object) and guild.get_role(key.id) is None:
+                target = guild.get_member(key.id)
+                if target is None:
+                    try:
+                        target = await guild.fetch_member(key.id)
+                    except discord.HTTPException:
+                        continue
+            else:
+                continue
+            await channel.set_permissions(target, overwrite=value)
         staff_team = guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
         if staff_team is not None:
             await channel.set_permissions(staff_team, view_channel=False)
@@ -72,6 +84,7 @@ class Private(commands.Cog):
         guild = require_guild(interaction.guild)
         channel = require_text_channel(interaction.channel)
         category = require_category_channel(guild.get_channel(ConfigManager.get("CHANNEL_IDS")["ADMIN+_CHECK_ID"]))
+        permissions = list(channel.overwrites.items())
 
         await self.change_category(channel, category)
         await self.update_database(channel.id, "Admin")
@@ -89,7 +102,7 @@ class Private(commands.Cog):
                     ephemeral=True,
                 )
 
-        await self.update_permissions(channel, guild, channel.overwrites.items(), guild.default_role)
+        await self.update_permissions(channel, guild, permissions, guild.default_role)
         await self.send_embed(interaction, "has turned this channel private.")
 
     @is_ticket()
@@ -106,6 +119,7 @@ class Private(commands.Cog):
         category = require_category_channel(
             guild.get_channel(ConfigManager.get("CHANNEL_IDS")["MANAGEMENT_CONTACT_ID"])
         )
+        permissions = list(channel.overwrites.items())
 
         await self.change_category(channel, category)
         await self.update_database(channel.id, "Management")
@@ -123,7 +137,7 @@ class Private(commands.Cog):
                     ephemeral=True,
                 )
 
-        await self.update_permissions(channel, guild, channel.overwrites.items(), guild.default_role)
+        await self.update_permissions(channel, guild, permissions, guild.default_role)
         await self.send_embed(interaction, "has made this channel for management.")
 
 
