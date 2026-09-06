@@ -256,13 +256,18 @@ class Close(commands.Cog):
             return
         await ticket_log_channel.send(embed=embed, file=discord.File("assets/Logo.png"))
 
-        tasks = [
-            overwrite.create_dm()
-            for overwrite in channel.overwrites
-            if isinstance(overwrite, discord.Member)
-            and not overwrite.bot
-            and channel.permissions_for(overwrite).view_channel
-        ]
+        members: list[discord.Member] = []
+        for target in channel.overwrites:
+            member = target if isinstance(target, discord.Member) else None
+            if member is None and isinstance(target, discord.Object):
+                try:
+                    member = await guild.fetch_member(target.id)
+                except discord.HTTPException:
+                    continue
+            if member is not None and not member.bot and channel.permissions_for(member).view_channel:
+                members.append(member)
+
+        tasks = [member.create_dm() for member in members]
 
         try:
             dm_channels = await asyncio.gather(*tasks)
