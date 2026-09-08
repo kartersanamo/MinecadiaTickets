@@ -65,6 +65,58 @@ class Add(commands.Cog):
             return True
         return False
 
+    @staticmethod
+    def is_staff_member(interaction: discord.Interaction) -> bool:
+        if not isinstance(interaction.user, discord.Member) or interaction.guild is None:
+            return False
+        staff_role = interaction.guild.get_role(ConfigManager.get("ROLE_IDS")["STAFF_TEAM_ROLE_ID"])
+        return staff_role is not None and staff_role in interaction.user.roles
+
+    @TaskDecorator.task("Check Ticket Owner", False)
+    async def check_ticket_owner(self, interaction: discord.Interaction) -> bool:
+        if self.is_staff_member(interaction):
+            return False
+        channel = require_text_channel(interaction.channel)
+        rows = DatabasePool.execute(
+            "SELECT owner_id FROM tickets WHERE channel_id = %s AND is_active = 1 LIMIT 1",
+            (channel.id,),
+        )
+        if not rows or int(rows[0]["owner_id"]) != interaction.user.id:
+            await interaction.response.send_message(
+                content="`❌` Failed! Only the ticket owner can add players to this ticket.",
+                ephemeral=True,
+            )
+            return True
+        return False
+
+    @TaskDecorator.task("Check Added Players", False)
+    async def check_added_players(self, interaction: discord.Interaction) -> bool:
+        if self.is_staff_member(interaction):
+            return False
+        channel = require_text_channel(interaction.channel)
+        rows = DatabasePool.execute(
+            "SELECT owner_id FROM tickets WHERE channel_id = %s AND is_active = 1 LIMIT 1",
+            (channel.id,),
+        )
+        if not rows:
+            return True
+
+        owner_id = int(rows[0]["owner_id"])
+        added_players = sum(
+            1
+            for target, overwrite in channel.overwrites.items()
+            if isinstance(target, discord.Member)
+            and target.id != owner_id
+            and overwrite.view_channel is True
+        )
+        if added_players >= 2:
+            await interaction.response.send_message(
+                content="`❌` Failed! You can only add up to **2** players to your ticket.",
+                ephemeral=True,
+            )
+            return True
+        return False
+
     @TaskDecorator.task("Set Permissions", False)
     async def set_permissions(self, channel: discord.TextChannel, user: discord.Member) -> None:
         from services.ticket_access_service import TicketAccessService
@@ -91,6 +143,12 @@ class Add(commands.Cog):
 
     @TaskDecorator.task("Add Command", True)
     async def add_command(self, interaction: discord.Interaction, user: discord.Member) -> None:
+        not_owner: bool = await self.check_ticket_owner(interaction)
+        if not_owner:
+            return
+        limit_reached: bool = await self.check_added_players(interaction)
+        if limit_reached:
+            return
         blacklisted: bool = await self.check_blacklisted(interaction, user)
         timed_out: bool = await self.check_timed_out(interaction, user)
 
