@@ -125,7 +125,7 @@ class Questions(discord.ui.Modal):
             for heading, item in zip(self._modal_field_headings, self.children):
                 if not isinstance(item, discord.ui.TextInput):
                     continue
-                if heading in ("What is your in game name?", "What is the offending player's IGN?"):
+                if heading in ("What is your in game name?", "What is the offending player's IGN?", "Tebex transaction ID (Found in your email)"):
                     new_description += f"**{heading}**\n`{item.value}`\n \n"
                 else:
                     new_description += f"**{heading}**\n{item.value}\n \n"
