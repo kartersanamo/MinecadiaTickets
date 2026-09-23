@@ -68,6 +68,45 @@ class TicketLogTiming:
     closed_at_timestamp: int
 
 
+PASTE_DOCUMENTS_URL = "https://paste.minecadia.com/documents"
+PASTE_BASE_URL = "https://paste.minecadia.com"
+TRANSCRIPT_UNAVAILABLE = "unavailable"
+PASTE_DEBUG_BODY_LIMIT = 300
+
+
+def _paste_body_preview(text: str) -> str:
+    return text[:PASTE_DEBUG_BODY_LIMIT].replace("\n", "\\n")
+
+
+def _log_paste_debug(payload_bytes: int, response: requests.Response) -> None:
+    log_tasks.warning(
+        "TEMP DEBUG paste: status=%s url=%s content_type=%s "
+        "request_bytes=%s response_bytes=%s body=%r",
+        response.status_code,
+        response.url,
+        response.headers.get("Content-Type", ""),
+        payload_bytes,
+        len(response.content),
+        _paste_body_preview(response.text),
+    )
+
+
+def _transcript_link_from_response(response: requests.Response) -> str | None:
+    if not response.ok:
+        log_tasks.warning("Paste upload rejected with HTTP %s", response.status_code)
+        return None
+    try:
+        response_data = response.json()
+    except ValueError:
+        log_tasks.warning("Paste upload returned non-JSON")
+        return None
+    key = response_data.get("key") if isinstance(response_data, dict) else None
+    if not key:
+        log_tasks.warning("Paste upload JSON missing key: %s", response_data)
+        return None
+    return f"{PASTE_BASE_URL}/{key}"
+
+
 def _embed_component_lengths(embed_dict: dict) -> list[int]:
     lengths: list[int] = []
     title = embed_dict.get("title", "")
@@ -133,30 +172,31 @@ class Close(commands.Cog):
             return "N/A"
 
     @TaskDecorator.task("Get Transcript Link")
-    async def return_link(self, content) -> str:
-        url: str = "https://paste.minecadia.com/documents"
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        response = requests.post(url, headers=headers, data=content.encode("utf-8"), timeout=30)
-        response_data = response.json()
-        key = response_data["key"]
-        return f"https://paste.minecadia.com/{key}"
+    async def return_link(self, content: str) -> str:
+        payload = content.encode("utf-8")
+        log_tasks.warning(
+            "TEMP DEBUG paste: posting %s bytes to %s",
+            len(payload),
+            PASTE_DOCUMENTS_URL,
+        )
+        try:
+            response = await asyncio.to_thread(
+                requests.post,
+                PASTE_DOCUMENTS_URL,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data=payload,
+                timeout=30,
+            )
+        except requests.RequestException as error:
+            log_tasks.warning(
+                "Paste upload failed before a response: %s bytes (%s)",
+                len(payload),
+                error,
+            )
+            return TRANSCRIPT_UNAVAILABLE
 
-        # url: str = 'https://paste.md-5.net/documents'
-        #
-        # try:
-        #    async with aiohttp.ClientSession() as session:
-        #        response = await session.post(url, data=content.encode("utf-8"))
-        #        response_data = await response.json()
-        #        key = response_data['key']
-        #        return f"https://paste.md-5.net/{key}"
-        # except aiohttp.ClientError as e:
-        #    log_tasks.warning(f"Failed to get link: {e}")
-        # except asyncio.TimeoutError:
-        #    log_tasks.warning("Request to paste.md-5.net timed out.")
-        #
-        # return "https://paste.md-5.net/"
+        _log_paste_debug(len(payload), response)
+        return _transcript_link_from_response(response) or TRANSCRIPT_UNAVAILABLE
 
     @TaskDecorator.task("Fetch All Messages")
     async def fetch_all_messages(self, channel: discord.TextChannel) -> list[discord.Message]:
@@ -224,12 +264,17 @@ class Close(commands.Cog):
             seconds = timing.closed_at_timestamp - timing.opened_timestamp
             delta = self.client.app.time_format.seconds_to_format(seconds)
 
+        transcript_line = (
+            f"[Ticket Transcript]({summary.link})"
+            if summary.link.startswith("http")
+            else "Ticket Transcript unavailable"
+        )
         desc = (
             f"`🎫` **{summary.ticket_type} #{summary.ticket_number}** was closed by {summary.closed_by}\n"
             f" **Reason:** {summary.reason}\n"
             f" **Owner:** {summary.owner_mention} / {summary.owner.name}\n"
             f" **Ticket Duration:** {delta}\n"
-            f"[Ticket Transcript]({summary.link})"
+            f"{transcript_line}"
         )
         embed = discord.Embed(color=discord.Color.from_str(ConfigManager.get("EMBED_COLOR")), description=desc)
         logo_url = self.client.app.embeds.get_logo_url(ConfigManager.get("LOGO"))
@@ -422,6 +467,8 @@ class Close(commands.Cog):
         )
 
         link = await self.return_link(content)
+        if link == TRANSCRIPT_UNAVAILABLE:
+            log_commands.warning("Closed #%s (%s) without a paste transcript", name, channel_id)
 
         embed = await self.get_ticket_log(
             TicketLogSummary(
